@@ -13,7 +13,7 @@ After code changes, use `bin/build` to create `site/elm.js`, then reload the bro
 
 To test `Zapsite.EncodeDecode`:
 
-    cd ~/.../elm-mammudeck
+    cd ~/.../zapsite
     elm-test
 
 Bill St. Clair, 9 April 2024
