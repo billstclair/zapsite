@@ -17,6 +17,7 @@ import Browser.Dom as Dom exposing (Viewport)
 import Browser.Events as Events
 import Browser.Navigation as Navigation exposing (Key)
 import Cmd.Extra exposing (addCmd, withCmd, withCmds, withNoCmd)
+import Dict exposing (Dict)
 import Html
     exposing
         ( Attribute
@@ -78,7 +79,7 @@ import Html.Attributes
 import Html.Events exposing (keyCode, on, onCheck, onClick, onInput, onMouseDown)
 import Json.Decode as JD exposing (Decoder)
 import Json.Encode as JE exposing (Value)
-import Markdown.PrettyTables exposing (ColumnInfo, TableInfo, TableStyle, finishReduction, reducePrettyTable)
+import Markdown.PrettyTables as PrettyTables exposing (ColumnInfo, TableInfo, TableStyle, finishReduction, reducePrettyTable)
 import Url exposing (Url)
 
 
@@ -124,6 +125,20 @@ update msg model =
             model |> withNoCmd
 
 
+columnInfo : ColumnInfo
+columnInfo =
+    { size = 50
+    , alignment = Nothing
+    }
+
+
+headerTableInfo : TableInfo String
+headerTableInfo =
+    { render = \_ -> "" -- \_ -> columnInfo --Dict Int ColumnInfo -> ColumnInfo
+    , info = Dict.empty --Dict Int ColumnInfo
+    }
+
+
 view : Model -> Document Msg
 view model =
     { title = "Zapsite"
@@ -138,6 +153,11 @@ view model =
                 ]
                 []
             ]
-        , p [] [ text <| model.input ]
+        , let
+            style =
+                PrettyTables.defaultStyle
+          in
+          p []
+            [ text <| model.input ]
         ]
     }
