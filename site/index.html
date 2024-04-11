@@ -1,12 +1,20 @@
 <html>
   <head>
+    <meta charset="UTF-8">
     <title>Zapsite</title>
+    <script type='text/javascript' src='elm.js'></script>
   </head>
   <body style='text-align: center;'>
-    <h2>Zapsite</h2>
-    <p>Place-holder for Zapsite.ninja.</p>
-    <p>
-      <a href='https://github.com/billstclair/zapsite'>GitHub</a>
-    </p>
+    <noscript>
+      <h2>Zapsite</h2>
+      <p>Place-holder for Zapsite.ninja.</p>
+      <p>
+        <a href='https://github.com/billstclair/zapsite'>GitHub</a>
+      </p>
+    </noscript>
+    <script>
+      // It's an application, so it doesn't need a div.
+      var app = Elm['Main'].init({ flags: true });
+    </script>
   </body>
 </html>
