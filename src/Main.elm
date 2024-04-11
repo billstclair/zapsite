@@ -100,6 +100,7 @@ subscriptions model =
 type Msg
     = OnUrlRequest UrlRequest
     | OnUrlChange Url
+    | UpdateInput String
 
 
 type alias Model =
@@ -114,13 +115,28 @@ init value url key =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    model |> withNoCmd
+    case msg of
+        UpdateInput input ->
+            { model | input = input } |> withNoCmd
+
+        _ ->
+            model |> withNoCmd
 
 
 view : Model -> Document Msg
 view model =
     { title = "Zapsite"
     , body =
-        [ text "Zapsite"
+        [ h2 [] [ text "Zapsite" ]
+        , p []
+            [ textarea
+                [ rows 8
+                , cols 80
+                , value model.input
+                , onInput UpdateInput
+                ]
+                []
+            ]
+        , p [] [ text <| model.input ]
         ]
     }
