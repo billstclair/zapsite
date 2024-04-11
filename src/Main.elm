@@ -78,6 +78,7 @@ import Html.Attributes
 import Html.Events exposing (keyCode, on, onCheck, onClick, onInput, onMouseDown)
 import Json.Decode as JD exposing (Decoder)
 import Json.Encode as JE exposing (Value)
+import Markdown.PrettyTables exposing (ColumnInfo, TableInfo, TableStyle, finishReduction, reducePrettyTable)
 import Url exposing (Url)
 
 
