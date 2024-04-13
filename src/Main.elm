@@ -79,7 +79,20 @@ import Html.Attributes
 import Html.Events exposing (keyCode, on, onCheck, onClick, onInput, onMouseDown)
 import Json.Decode as JD exposing (Decoder)
 import Json.Encode as JE exposing (Value)
-import Markdown.PrettyTables as PrettyTables exposing (ColumnInfo, TableInfo, TableStyle, finishReduction, reducePrettyTable)
+import Markdown.Block as Markdown
+import Markdown.Html
+import Markdown.Parser as Markdown
+import Markdown.PrettyTables as PrettyTables
+    exposing
+        ( ColumnInfo
+        , TableInfo
+        , TableStyle
+        , finishReduction
+        , reducePrettyTable
+        )
+import Markdown.Renderer as Markdown
+import Markdown.Scaffolded as Scaffolded
+import Result.Extra as Result
 import Url exposing (Url)
 
 
@@ -107,12 +120,29 @@ type Msg
 
 type alias Model =
     { input : String
+    , parsed : Result String (List Markdown.Block)
     }
 
 
 init : Value -> Url -> Key -> ( Model, Cmd Msg )
 init value url key =
-    { input = "" } |> withNoCmd
+    let
+        string =
+            case JD.decodeValue JD.string value of
+                Err e ->
+                    "Error: " ++ Debug.toString e
+
+                Ok s ->
+                    s
+    in
+    { input = ""
+    , parsed =
+        string
+            |> Markdown.parse
+            |> Result.mapError
+                (List.map Markdown.deadEndToString >> String.join "\n")
+    }
+        |> withNoCmd
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
