@@ -92,6 +92,7 @@ import Markdown.PrettyTables as PrettyTables
         )
 import Markdown.Renderer as Markdown
 import Markdown.Scaffolded as Scaffolded
+import Result as Result
 import Result.Extra as Result
 import Url exposing (Url)
 
@@ -136,11 +137,7 @@ init value url key =
                     s
     in
     { input = ""
-    , parsed =
-        string
-            |> Markdown.parse
-            |> Result.mapError
-                (List.map Markdown.deadEndToString >> String.join "\n")
+    , parsed = Err "Not yet initialized."
     }
         |> withNoCmd
 
@@ -149,7 +146,15 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         UpdateInput input ->
-            { model | input = input } |> withNoCmd
+            { model
+                | input = input
+                , parsed =
+                    input
+                        |> Markdown.parse
+                        |> Result.mapError
+                            (List.map Markdown.deadEndToString >> String.join "\n")
+            }
+                |> withNoCmd
 
         _ ->
             model |> withNoCmd
@@ -183,11 +188,34 @@ view model =
                 ]
                 []
             ]
-        , let
-            style =
-                PrettyTables.defaultStyle
-          in
-          p []
-            [ text <| model.input ]
+        , p []
+            (model.parsed
+                |> Result.andThen (Markdown.render customHtmlRenderer)
+                |> Result.map PrettyTables.finishReduction
+                |> Result.unpack viewError viewMarkdown
+            )
         ]
     }
+
+
+customHtmlRenderer : Markdown.Renderer (Int -> PrettyTables.TableInfo String)
+customHtmlRenderer =
+    Scaffolded.toRenderer
+        { renderHtml = Markdown.Html.oneOf []
+        , renderMarkdown = PrettyTables.reducePrettyTable PrettyTables.defaultStyle
+        }
+
+
+viewMarkdown : String -> List (Html Msg)
+viewMarkdown markdown =
+    [ Html.h2 [] [ text "Prettyprinted:" ]
+    , Html.hr [] []
+    , Html.pre [ style "white-space" "pre-wrap" ] [ text markdown ]
+    ]
+
+
+viewError : String -> List (Html Msg)
+viewError errorMessage =
+    [ Html.pre [ style "white-space" "pre-wrap" ]
+        [ Html.text errorMessage ]
+    ]
