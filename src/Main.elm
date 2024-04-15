@@ -79,6 +79,7 @@ import Html.Attributes
 import Html.Events exposing (keyCode, on, onCheck, onClick, onInput, onMouseDown)
 import Json.Decode as JD exposing (Decoder)
 import Json.Encode as JE exposing (Value)
+import Markdown
 import Markdown.Block as Markdown
 import Markdown.Html
 import Markdown.Parser as Markdown
@@ -180,6 +181,8 @@ view model =
     , body =
         [ h2 [] [ text "Zapsite" ]
         , p []
+            [ text "Current Playground" ]
+        , p []
             [ textarea
                 [ rows 8
                 , cols 80
@@ -194,6 +197,16 @@ view model =
                 |> Result.map PrettyTables.finishReduction
                 |> Result.unpack viewError viewMarkdown
             )
+        , p []
+            [ h2 [] [ text "Parsed (Result String (List Markdown.Block)" ]
+            , model.parsed
+                |> Debug.toString
+                |> text
+            ]
+        , p []
+            [ a [ href "https://github.com/billstclair/zapsite" ]
+                [ text "GitHub" ]
+            ]
         ]
     }
 
@@ -202,7 +215,7 @@ customHtmlRenderer : Markdown.Renderer (Int -> PrettyTables.TableInfo String)
 customHtmlRenderer =
     Scaffolded.toRenderer
         { renderHtml = Markdown.Html.oneOf []
-        , renderMarkdown = PrettyTables.reducePrettyTable PrettyTables.defaultStyle
+        , renderMarkdown = Debug.log "reducePrettyTable" (PrettyTables.reducePrettyTable PrettyTables.defaultStyle)
         }
 
 
@@ -211,6 +224,14 @@ viewMarkdown markdown =
     [ Html.h2 [] [ text "Prettyprinted:" ]
     , Html.hr [] []
     , Html.pre [ style "white-space" "pre-wrap" ] [ text markdown ]
+    , Html.h2 [] [ text "toHTML:" ]
+    , p []
+        [ Markdown.toHtml
+            [ style "overflow" "auto"
+            , style "width" "100%"
+            ]
+            markdown
+        ]
     ]
 
 
