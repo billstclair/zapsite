@@ -79,7 +79,7 @@ import Html.Attributes
 import Html.Events exposing (keyCode, on, onCheck, onClick, onInput, onMouseDown)
 import Json.Decode as JD exposing (Decoder)
 import Json.Encode as JE exposing (Value)
-import Markdown
+import Markdown exposing (Markdown)
 import Markdown.Block as Markdown
 import Markdown.Html
 import Markdown.Parser as Markdown
@@ -215,7 +215,9 @@ customHtmlRenderer : Markdown.Renderer (Int -> PrettyTables.TableInfo String)
 customHtmlRenderer =
     Scaffolded.toRenderer
         { renderHtml = Markdown.Html.oneOf []
-        , renderMarkdown = Debug.log "reducePrettyTable" (PrettyTables.reducePrettyTable PrettyTables.defaultStyle)
+        , renderMarkdown =
+            Debug.log "reducePrettyTable" <|
+                PrettyTables.reducePrettyTable PrettyTables.defaultStyle
         }
 
 
@@ -226,13 +228,17 @@ viewMarkdown markdown =
     , Html.pre [ style "white-space" "pre-wrap" ] [ text markdown ]
     , Html.h2 [] [ text "toHTML:" ]
     , p []
-        [ Markdown.toHtml
-            [ style "overflow" "auto"
-            , style "width" "100%"
-            ]
-            markdown
-        ]
+        [ toHtml markdown ]
     ]
+
+
+toHtml : Markdown -> List (Html Msg)
+toHtml markdown =
+    Markdown.toHtml
+        [ style "overflow" "auto"
+        , style "width" "100%"
+        ]
+        markdown
 
 
 viewError : String -> List (Html Msg)
