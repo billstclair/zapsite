@@ -79,7 +79,7 @@ import Html.Attributes
 import Html.Events exposing (keyCode, on, onCheck, onClick, onInput, onMouseDown)
 import Json.Decode as JD exposing (Decoder)
 import Json.Encode as JE exposing (Value)
-import Markdown exposing (Markdown)
+import Markdown
 import Markdown.Block as Markdown
 import Markdown.Html
 import Markdown.Parser as Markdown
@@ -232,7 +232,7 @@ viewMarkdown markdown =
     ]
 
 
-toHtml : Markdown -> List (Html Msg)
+toHtml : String -> Html Msg
 toHtml markdown =
     Markdown.toHtml
         [ style "overflow" "auto"
