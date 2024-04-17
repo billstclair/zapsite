@@ -19,6 +19,43 @@ A template is Markdown text, with "{ <name> }" references. Each of the
 row, there can be more than one set of key/value pairs to fill in the
 table.
 
-{ table {tablename} : [ {col1_header}, {col2_header},... {coln_header} ]
-}
+    
+Template: "/index"
 
+## Stoneder.club
+
+Cheech: "I'm stoneder than you."
+Chong: "Wow, man. Cool."
+
+[places](places/) [online](online/)
+
+[GitHub](https://github.com/billstclair/stoneder)
+
+
+Template: "/places/index"
+
+## places - [stonedir.club](../)
+
+Places to buy and/or imbibe.
+
+state | city
+----- | ----
+{state} | [{city}]({state}-{city})
+
+
+Template: "/places/tennessee-knoxville"
+
+## Knoxville, Tennessee - [places](index) - [stoneder.com](../../)
+
+place | imbibe | purchase | address | phone
+----- | ------ | -------- | ------- | -----
+{place} | {imbibe} | {purchase} | {address} | {phone}
+
+
+Template: "/online/index"
+
+## online - [stoneder.club](../)
+
+place | description | address | email | phone
+----- | ----------- | ------- | ----- | -----
+{place} | {description} | {address} | {email} | {phone}
