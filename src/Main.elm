@@ -118,6 +118,26 @@ type alias Model =
     }
 
 
+initialMarkdown : String
+initialMarkdown =
+    """# Zapsite
+## Making web sites, that invite additions, with templates.
+
+The quick brown fox jumped over the lazy dog.
+
+_italic_ **bold** **_bold italic_**
+
+[google.com](https://google.com)
+
+col1 | col2
+---- | ----
+r1c2 | r1c2
+row 2 column 1 | row 2 column 2
+r3c1 | row 3 column 2
+row 4 column 1 | r4c2
+    """
+
+
 init : Value -> Url -> Key -> ( Model, Cmd Msg )
 init value url key =
     let
@@ -129,10 +149,17 @@ init value url key =
                 Ok s ->
                     s
     in
-    { input = ""
-    , parsed = Err "Not yet initialized."
+    { input = initialMarkdown
+    , parsed = parseMarkdown initialMarkdown
     }
         |> withNoCmd
+
+
+parseMarkdown : String -> Result String (List Markdown.Block)
+parseMarkdown markdown =
+    Markdown.parse markdown
+        |> Result.mapError
+            (List.map Markdown.deadEndToString >> String.join "#\n")
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -141,11 +168,7 @@ update msg model =
         UpdateInput input ->
             { model
                 | input = input
-                , parsed =
-                    input
-                        |> Markdown.parse
-                        |> Result.mapError
-                            (List.map Markdown.deadEndToString >> String.join "\n")
+                , parsed = parseMarkdown input
             }
                 |> withNoCmd
 
@@ -162,7 +185,7 @@ view model =
             [ text "Current Playground" ]
         , p []
             [ textarea
-                [ rows 8
+                [ rows 18
                 , cols 80
                 , value model.input
                 , onInput UpdateInput
