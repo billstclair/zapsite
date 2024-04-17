@@ -83,14 +83,6 @@ import Markdown
 import Markdown.Block as Markdown
 import Markdown.Html
 import Markdown.Parser as Markdown
-import Markdown.PrettyTables as PrettyTables
-    exposing
-        ( ColumnInfo
-        , TableInfo
-        , TableStyle
-        , finishReduction
-        , reducePrettyTable
-        )
 import Markdown.Renderer as Markdown
 import Markdown.Scaffolded as Scaffolded
 import Result as Result
@@ -161,20 +153,6 @@ update msg model =
             model |> withNoCmd
 
 
-columnInfo : ColumnInfo
-columnInfo =
-    { size = 50
-    , alignment = Nothing
-    }
-
-
-headerTableInfo : TableInfo String
-headerTableInfo =
-    { render = \_ -> "" -- \_ -> columnInfo --Dict Int ColumnInfo -> ColumnInfo
-    , info = Dict.empty --Dict Int ColumnInfo
-    }
-
-
 view : Model -> Document Msg
 view model =
     { title = "Zapsite"
@@ -192,10 +170,17 @@ view model =
                 []
             ]
         , p []
-            (model.parsed
-                |> Result.andThen (Markdown.render customHtmlRenderer)
-                |> Result.map PrettyTables.finishReduction
-                |> Result.unpack viewError viewMarkdown
+            (case model.parsed of
+                Ok blocks ->
+                    case Markdown.render Markdown.defaultHtmlRenderer blocks of
+                        Ok htmls ->
+                            htmls
+
+                        Err errmsg ->
+                            [ text <| "Error: " ++ errmsg ]
+
+                Err errmsg ->
+                    [ text <| "Error: " ++ errmsg ]
             )
         , p []
             [ h2 [] [ text "Parsed (Result String (List Markdown.Block)" ]
@@ -209,16 +194,6 @@ view model =
             ]
         ]
     }
-
-
-customHtmlRenderer : Markdown.Renderer (Int -> PrettyTables.TableInfo String)
-customHtmlRenderer =
-    Scaffolded.toRenderer
-        { renderHtml = Markdown.Html.oneOf []
-        , renderMarkdown =
-            Debug.log "reducePrettyTable" <|
-                PrettyTables.reducePrettyTable PrettyTables.defaultStyle
-        }
 
 
 viewMarkdown : String -> List (Html Msg)
