@@ -27,6 +27,7 @@ import Html
         , div
         , figcaption
         , figure
+        , h1
         , h2
         , h3
         , img
@@ -180,9 +181,10 @@ view : Model -> Document Msg
 view model =
     { title = "Zapsite"
     , body =
-        [ h2 [] [ text "Zapsite" ]
+        [ h1 [] [ text "Zapsite" ]
+        , h2 [] [ text "Current Playground" ]
         , p []
-            [ text "Current Playground" ]
+            [ text "Type in the textarea below, see rendering and data structure below." ]
         , p []
             [ textarea
                 [ rows 18
