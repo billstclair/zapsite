@@ -18,7 +18,7 @@ module ZapSite.Template exposing (Variables, render)
 import Dict exposing (Dict)
 import Html exposing (Html, text)
 import Markdown
-import Markdown.Block as Markdown
+import Markdown.Block as Markdown exposing (Block(..), Inline(..))
 import Markdown.Html
 import Markdown.Parser as Markdown
 import Markdown.Renderer as Markdown
@@ -53,3 +53,70 @@ parseMarkdown markdown =
     Markdown.parse markdown
         |> Result.mapError
             (List.map Markdown.deadEndToString >> String.join "#\n")
+
+
+isTemplate : String -> Maybe String
+isTemplate string =
+    if
+        (String.left 1 string == "{")
+            && (String.right 1 string == "}")
+    then
+        Just <| String.slice 1 -1 string
+
+    else
+        Nothing
+
+
+walkTemplate : Variables -> (Block -> Block) -> List Block -> List Block
+walkTemplate variables f blocks =
+    let
+        walk : List Block -> List Block -> List Block
+        walk blocksTail res =
+            case blocksTail of
+                [] ->
+                    List.reverse res
+
+                head :: tail ->
+                    walk tail (Markdown.walk f head :: res)
+    in
+    walk blocks []
+
+
+replaceVariables : Variables -> List Block -> List Block
+replaceVariables variables blocks =
+    let
+        replaceVariable : Inline -> Inline
+        replaceVariable inline =
+            case inline of
+                Text s ->
+                    case isTemplate s of
+                        Just v ->
+                            case Dict.get v variables of
+                                Just value ->
+                                    Text value
+
+                                Nothing ->
+                                    inline
+
+                        Nothing ->
+                            inline
+
+                _ ->
+                    inline
+
+        walkOne : Block -> Block
+        walkOne block =
+            case block of
+                Heading level inlines ->
+                    Heading level (List.map replaceVariable inlines)
+
+                Paragraph inlines ->
+                    Paragraph (List.map replaceVariable inlines)
+
+                _ ->
+                    block
+
+        walker block =
+            Markdown.walk walkOne block
+    in
+    walkTemplate variables walker blocks
