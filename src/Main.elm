@@ -181,41 +181,43 @@ view : Model -> Document Msg
 view model =
     { title = "Zapsite"
     , body =
-        [ h1 [] [ text "Zapsite" ]
-        , h2 [] [ text "Current Playground" ]
-        , p []
-            [ text "Type in the textarea below, see rendering and data structure below." ]
-        , p []
-            [ textarea
-                [ rows 18
-                , cols 80
-                , value model.input
-                , onInput UpdateInput
+        [ span [ style "left-margin" "20px" ]
+            [ h1 [] [ text "Zapsite" ]
+            , h2 [] [ text "Current Playground" ]
+            , p []
+                [ text "Type in the textarea below, see rendering and data structure below." ]
+            , p []
+                [ textarea
+                    [ rows 18
+                    , cols 80
+                    , value model.input
+                    , onInput UpdateInput
+                    ]
+                    []
                 ]
-                []
-            ]
-        , p []
-            (case model.parsed of
-                Ok blocks ->
-                    case Markdown.render Markdown.defaultHtmlRenderer blocks of
-                        Ok htmls ->
-                            htmls
+            , p []
+                (case model.parsed of
+                    Ok blocks ->
+                        case Markdown.render Markdown.defaultHtmlRenderer blocks of
+                            Ok htmls ->
+                                htmls
 
-                        Err errmsg ->
-                            [ text <| "Error: " ++ errmsg ]
+                            Err errmsg ->
+                                [ text <| "Error: " ++ errmsg ]
 
-                Err errmsg ->
-                    [ text <| "Error: " ++ errmsg ]
-            )
-        , p []
-            [ h2 [] [ text "Parsed (Result String (List Markdown.Block)" ]
-            , model.parsed
-                |> Debug.toString
-                |> text
-            ]
-        , p []
-            [ a [ href "https://github.com/billstclair/zapsite" ]
-                [ text "GitHub" ]
+                    Err errmsg ->
+                        [ text <| "Error: " ++ errmsg ]
+                )
+            , p []
+                [ h2 [] [ text "Parsed (Result String (List Markdown.Block)" ]
+                , model.parsed
+                    |> Debug.toString
+                    |> text
+                ]
+            , p []
+                [ a [ href "https://github.com/billstclair/zapsite" ]
+                    [ text "GitHub" ]
+                ]
             ]
         ]
     }
