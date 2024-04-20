@@ -16,4 +16,6 @@ To test `Zapsite.EncodeDecode`:
     cd ~/.../zapsite
     elm-test
 
+The table formatting is in [site/css/site.css](./site/css/site.css)
+
 Bill St. Clair, 9 April 2024

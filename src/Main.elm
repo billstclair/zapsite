@@ -198,14 +198,19 @@ update msg model =
 
 viewPairs : Model -> List (Html msg)
 viewPairs model =
-    Dict.map viewPair model.variables
+    model.variables
         |> Dict.toList
-        |> List.map (\( _, v ) -> v)
+        |> List.map (\( k, v ) -> tr [] [ td [] [ text k ], td [] [ text v ] ])
 
 
 viewPair : String -> String -> Html msg
 viewPair key value =
     text <| key ++ ":" ++ value
+
+
+br : Html msg
+br =
+    Html.br [] []
 
 
 view : Model -> Document Msg
@@ -239,6 +244,21 @@ view model =
                     Err errmsg ->
                         [ text <| "Error: " ++ errmsg ]
                 )
+            , p []
+                [ h2 [] [ text "Pairs:" ]
+                , br
+                , table []
+                    (model.variables
+                        |> Dict.toList
+                        |> List.map
+                            (\( k, v ) ->
+                                tr []
+                                    [ td [] [ text k ]
+                                    , td [] [ text v ]
+                                    ]
+                            )
+                    )
+                ]
             , p []
                 [ h2 [] [ text "Parsed (Result String (List Markdown.Block)" ]
                 , model.parsed
