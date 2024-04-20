@@ -80,6 +80,7 @@ import Html.Attributes
 import Html.Events exposing (keyCode, on, onCheck, onClick, onInput, onMouseDown)
 import Json.Decode as JD exposing (Decoder)
 import Json.Encode as JE exposing (Value)
+import List.Extra as LE
 import Markdown
 import Markdown.Block as Markdown
 import Markdown.Html
@@ -89,6 +90,7 @@ import Markdown.Scaffolded as Scaffolded
 import Result as Result
 import Result.Extra as Result
 import Url exposing (Url)
+import ZapSite.Template as Template exposing (Variables)
 
 
 main =
@@ -111,11 +113,20 @@ type Msg
     = OnUrlRequest UrlRequest
     | OnUrlChange Url
     | UpdateInput String
+    | AddPair String String
+    | DeletePair String
+
+
+type Page
+    = MarkdownPage
+    | TemplatePage
 
 
 type alias Model =
     { input : String
     , parsed : Result String (List Markdown.Block)
+    , variables : Variables
+    , page : Page
     }
 
 
@@ -152,6 +163,8 @@ init value url key =
     in
     { input = initialMarkdown
     , parsed = parseMarkdown initialMarkdown
+    , variables = Template.emptyVariables
+    , page = TemplatePage
     }
         |> withNoCmd
 
@@ -173,8 +186,26 @@ update msg model =
             }
                 |> withNoCmd
 
+        AddPair key value ->
+            model |> withNoCmd
+
+        DeletePair key ->
+            model |> withNoCmd
+
         _ ->
             model |> withNoCmd
+
+
+viewPairs : Model -> List (Html msg)
+viewPairs model =
+    Dict.map viewPair model.variables
+        |> Dict.toList
+        |> List.map (\( _, v ) -> v)
+
+
+viewPair : String -> String -> Html msg
+viewPair key value =
+    text <| key ++ ":" ++ value
 
 
 view : Model -> Document Msg
