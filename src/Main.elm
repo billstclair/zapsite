@@ -118,6 +118,9 @@ type Msg
     | UpdateVariableValue String String
     | UpdateNewVar String
     | UpdateNewVal String
+    | SetVariableValue String String
+    | DeleteVariable String
+    | AddNewVariable
 
 
 type Page
@@ -137,14 +140,14 @@ type alias Model =
 
 initialMarkdown : String
 initialMarkdown =
-    """# Zapsite
+    """# {title}
 ## Making web sites, that invite additions, with templates.
 
 The quick brown fox jumped over the lazy dog.
 
 _italic_ **bold** **_bold italic_**
 
-[google.com](https://google.com)
+[{link-name}]({link})
 
 col1 | col2
 ---- | ----
@@ -168,7 +171,12 @@ init value url key =
     in
     { input = initialMarkdown
     , parsed = parseMarkdown initialMarkdown
-    , variables = Template.emptyVariables
+    , variables =
+        Dict.fromList
+            [ ( "title", "Zapsite" )
+            , ( "link", "https://google.com" )
+            , ( "link-name", "google.com" )
+            ]
     , page = TemplatePage
     , newvar = ""
     , newval = ""
@@ -208,6 +216,27 @@ update msg model =
 
         UpdateNewVal val ->
             { model | newval = val } |> withNoCmd
+
+        SetVariableValue k v ->
+            { model
+                | variables = Dict.insert k v model.variables
+            }
+                |> withNoCmd
+
+        DeleteVariable k ->
+            { model
+                | variables = Dict.remove k model.variables
+            }
+                |> withNoCmd
+
+        AddNewVariable ->
+            { model
+                | variables =
+                    Dict.insert model.newvar model.newval model.variables
+                , newvar = ""
+                , newval = ""
+            }
+                |> withNoCmd
 
         _ ->
             model |> withNoCmd
@@ -280,16 +309,22 @@ viewVariables model =
                         ]
                         []
                     ]
+                , td []
+                    [ button "Set" <| SetVariableValue k v
+                    , text " "
+                    , button "Delete" <| DeleteVariable k
+                    ]
                 ]
     in
     p []
-        [ h2 [] [ text "Pairs:" ]
+        [ h2 [] [ text "Variables:" ]
         , br
         , table [] <|
             List.concat
                 [ [ tr []
                         [ th [] [ text "Var" ]
                         , th [] [ text "Val" ]
+                        , th [] [ text "Action" ]
                         ]
                   ]
                 , model.variables
@@ -314,10 +349,18 @@ viewVariables model =
                                 ]
                                 []
                             ]
+                        , td []
+                            [ button "Add" AddNewVariable ]
                         ]
                   ]
                 ]
         ]
+
+
+button : String -> Msg -> Html Msg
+button label msg =
+    Html.button [ onClick msg ]
+        [ text label ]
 
 
 viewMarkdown : String -> List (Html Msg)
