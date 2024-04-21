@@ -115,6 +115,9 @@ type Msg
     | UpdateInput String
     | AddPair String String
     | DeletePair String
+    | UpdateVariableValue String String
+    | UpdateNewVar String
+    | UpdateNewVal String
 
 
 type Page
@@ -127,6 +130,8 @@ type alias Model =
     , parsed : Result String (List Markdown.Block)
     , variables : Variables
     , page : Page
+    , newvar : String
+    , newval : String
     }
 
 
@@ -165,6 +170,8 @@ init value url key =
     , parsed = parseMarkdown initialMarkdown
     , variables = Template.emptyVariables
     , page = TemplatePage
+    , newvar = ""
+    , newval = ""
     }
         |> withNoCmd
 
@@ -192,20 +199,18 @@ update msg model =
         DeletePair key ->
             model |> withNoCmd
 
+        UpdateVariableValue var val ->
+            { model | variables = Dict.insert var val model.variables }
+                |> withNoCmd
+
+        UpdateNewVar var ->
+            { model | newvar = var } |> withNoCmd
+
+        UpdateNewVal val ->
+            { model | newval = val } |> withNoCmd
+
         _ ->
             model |> withNoCmd
-
-
-viewPairs : Model -> List (Html msg)
-viewPairs model =
-    model.variables
-        |> Dict.toList
-        |> List.map (\( k, v ) -> tr [] [ td [] [ text k ], td [] [ text v ] ])
-
-
-viewPair : String -> String -> Html msg
-viewPair key value =
-    text <| key ++ ":" ++ value
 
 
 br : Html msg
@@ -217,7 +222,7 @@ view : Model -> Document Msg
 view model =
     { title = "Zapsite"
     , body =
-        [ span [ style "left-margin" "20px" ]
+        [ div [ style "left-margin" "20px" ]
             [ h1 [] [ text "Zapsite" ]
             , h2 [] [ text "Current Playground" ]
             , p []
@@ -244,21 +249,7 @@ view model =
                     Err errmsg ->
                         [ text <| "Error: " ++ errmsg ]
                 )
-            , p []
-                [ h2 [] [ text "Pairs:" ]
-                , br
-                , table []
-                    (model.variables
-                        |> Dict.toList
-                        |> List.map
-                            (\( k, v ) ->
-                                tr []
-                                    [ td [] [ text k ]
-                                    , td [] [ text v ]
-                                    ]
-                            )
-                    )
-                ]
+            , viewVariables model
             , p []
                 [ h2 [] [ text "Parsed (Result String (List Markdown.Block)" ]
                 , model.parsed
@@ -272,6 +263,61 @@ view model =
             ]
         ]
     }
+
+
+viewVariables : Model -> Html Msg
+viewVariables model =
+    let
+        viewRow ( k, v ) =
+            tr []
+                [ td [] [ text k ]
+                , td []
+                    [ textarea
+                        [ rows 1
+                        , cols 50
+                        , value v
+                        , onInput (UpdateVariableValue k)
+                        ]
+                        []
+                    ]
+                ]
+    in
+    p []
+        [ h2 [] [ text "Pairs:" ]
+        , br
+        , table [] <|
+            List.concat
+                [ [ tr []
+                        [ th [] [ text "Var" ]
+                        , th [] [ text "Val" ]
+                        ]
+                  ]
+                , model.variables
+                    |> Dict.toList
+                    |> List.map viewRow
+                , [ tr []
+                        [ td []
+                            [ textarea
+                                [ rows 1
+                                , cols 10
+                                , value model.newvar
+                                , onInput UpdateNewVar
+                                ]
+                                []
+                            ]
+                        , td []
+                            [ textarea
+                                [ rows 1
+                                , cols 50
+                                , value model.newval
+                                , onInput UpdateNewVal
+                                ]
+                                []
+                            ]
+                        ]
+                  ]
+                ]
+        ]
 
 
 viewMarkdown : String -> List (Html Msg)
