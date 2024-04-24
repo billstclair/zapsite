@@ -150,7 +150,7 @@ _italic_ **bold** **_bold italic_**
 [{link-name}]({link})
 
 {col1} | {col2}
----- | ----
+------ | ------
 {rnc1} | {rnc2}
     """
 

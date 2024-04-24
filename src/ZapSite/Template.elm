@@ -93,6 +93,21 @@ walkTemplate variables f blocks =
     walk blocks []
 
 
+lookupWithSuffix : String -> String -> Variables -> String
+lookupWithSuffix string suffix variables =
+    case isTemplate string of
+        Just v ->
+            case Dict.get (v ++ suffix) variables of
+                Just value ->
+                    value
+
+                Nothing ->
+                    string
+
+        Nothing ->
+            string
+
+
 lookup : String -> Variables -> String
 lookup string variables =
     case isTemplate string of
@@ -155,8 +170,66 @@ replaceVariables variables blocks =
             , alignment = alignment
             }
 
+        replaceRows : List (List (List Inline)) -> List (List (List Inline))
         replaceRows rows =
-            rows
+            case rows of
+                [ row ] ->
+                    duplicateRow row
+
+                _ ->
+                    replaceAllRows rows []
+
+        replaceAllVariables : List (List Inline) -> List (List Inline)
+        replaceAllVariables cols =
+            let
+                replaceOneCol col =
+                    List.map replaceVariable col
+            in
+            List.map replaceOneCol cols
+
+        replaceAllRows : List (List (List Inline)) -> List (List (List Inline)) -> List (List (List Inline))
+        replaceAllRows rows res =
+            case rows of
+                [] ->
+                    List.reverse res
+
+                cols :: tail ->
+                    replaceAllRows tail
+                        (replaceAllVariables cols :: res)
+
+        replaceAllRowVariables cols suffix =
+            let
+                replaceOneCol col =
+                    List.map (replaceRowVariable suffix) col
+            in
+            List.map replaceOneCol cols
+
+        replaceRowVariable suffix inline =
+            case inline of
+                Text s ->
+                    Text <| lookupWithSuffix s suffix variables
+
+                _ ->
+                    inline
+
+        duplicateRow : List (List Inline) -> List (List (List Inline))
+        duplicateRow cols =
+            let
+                tryN n res =
+                    let
+                        nstr =
+                            String.fromInt n
+
+                        replacedCols =
+                            replaceAllRowVariables cols nstr
+                    in
+                    if replacedCols == cols then
+                        List.reverse res
+
+                    else
+                        tryN (n + 1) (replacedCols :: res)
+            in
+            tryN 1 []
 
         walkOne : Block -> Block
         walkOne block =
