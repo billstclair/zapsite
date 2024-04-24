@@ -1,4 +1,4 @@
-----------------------------------------------------------------------
+---------------------------------------------------------------------
 --
 -- Main.elm
 -- Zapsite, a simple web site editor, with user suggestion and merge support.
@@ -149,12 +149,9 @@ _italic_ **bold** **_bold italic_**
 
 [{link-name}]({link})
 
-col1 | col2
+{col1} | {col2}
 ---- | ----
-r1c2 | r1c2
-row 2 column 1 | row 2 column 2
-r3c1 | row 3 column 2
-row 4 column 1 | r4c2
+{rnc1} | {rnc2}
     """
 
 
@@ -176,6 +173,12 @@ init value url key =
             [ ( "title", "Zapsite" )
             , ( "link", "https://google.com" )
             , ( "link-name", "google.com" )
+            , ( "col1", "First Column" )
+            , ( "col2", "Second Column" )
+            , ( "rnc11", "r1c1" )
+            , ( "rnc21", "r1c2" )
+            , ( "rnc12", "Row 2 column 1" )
+            , ( "rnc22", "Row 2 column 2" )
             ]
     , page = TemplatePage
     , newvar = ""

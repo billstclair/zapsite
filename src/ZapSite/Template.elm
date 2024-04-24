@@ -83,7 +83,7 @@ walkTemplate variables f blocks =
     let
         walk : List Block -> List Block -> List Block
         walk blocksTail res =
-            case blocksTail of
+            case Debug.log "walkTemplate blocksTail" blocksTail of
                 [] ->
                     List.reverse res
 
@@ -113,7 +113,7 @@ replaceVariables variables blocks =
     let
         replaceVariable : Inline -> Inline
         replaceVariable inline =
-            case inline of
+            case Debug.log "replaceVariable" inline of
                 HtmlInline block ->
                     case block of
                         Markdown.HtmlElement tag attributes children ->
@@ -150,14 +150,25 @@ replaceVariables variables blocks =
                 _ ->
                     inline
 
+        replaceHeader { label, alignment } =
+            { label = List.map replaceVariable label
+            , alignment = alignment
+            }
+
+        replaceRows rows =
+            rows
+
         walkOne : Block -> Block
         walkOne block =
-            case block of
+            case Debug.log "walkOne" block of
                 Heading level inlines ->
                     Heading level (List.map replaceVariable inlines)
 
                 Paragraph inlines ->
                     Paragraph (List.map replaceVariable inlines)
+
+                Table headers rows ->
+                    Table (List.map replaceHeader headers) (replaceRows rows)
 
                 _ ->
                     block
