@@ -47,7 +47,11 @@ render markdown variables =
             [ text <| "Markdown parsing error: " ++ errmsg ]
 
         Ok blocks ->
-            case Markdown.render Markdown.defaultHtmlRenderer blocks of
+            let
+                finalBlocks =
+                    replaceVariables variables blocks
+            in
+            case Markdown.render Markdown.defaultHtmlRenderer finalBlocks of
                 Ok htmls ->
                     htmls
 
@@ -89,24 +93,59 @@ walkTemplate variables f blocks =
     walk blocks []
 
 
+lookup : String -> Variables -> String
+lookup string variables =
+    case isTemplate string of
+        Just v ->
+            case Dict.get v variables of
+                Just value ->
+                    value
+
+                Nothing ->
+                    string
+
+        Nothing ->
+            string
+
+
 replaceVariables : Variables -> List Block -> List Block
 replaceVariables variables blocks =
     let
         replaceVariable : Inline -> Inline
         replaceVariable inline =
             case inline of
-                Text s ->
-                    case isTemplate s of
-                        Just v ->
-                            case Dict.get v variables of
-                                Just value ->
-                                    Text value
+                HtmlInline block ->
+                    case block of
+                        Markdown.HtmlElement tag attributes children ->
+                            HtmlInline <|
+                                Markdown.HtmlElement tag attributes <|
+                                    List.map walkOne children
 
-                                Nothing ->
-                                    inline
-
-                        Nothing ->
+                        _ ->
                             inline
+
+                Link url maybe inlines ->
+                    Link (lookup url variables) maybe <|
+                        List.map replaceVariable inlines
+
+                Image url maybe inlines ->
+                    Image (lookup url variables) maybe <|
+                        List.map replaceVariable inlines
+
+                Emphasis inlines ->
+                    Emphasis <| List.map replaceVariable inlines
+
+                Strong inlines ->
+                    Strong <| List.map replaceVariable inlines
+
+                Strikethrough inlines ->
+                    Strikethrough <| List.map replaceVariable inlines
+
+                CodeSpan s ->
+                    CodeSpan <| lookup s variables
+
+                Text s ->
+                    Text <| lookup s variables
 
                 _ ->
                     inline

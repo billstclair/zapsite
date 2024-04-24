@@ -265,19 +265,7 @@ view model =
                     ]
                     []
                 ]
-            , p []
-                (case model.parsed of
-                    Ok blocks ->
-                        case Markdown.render Markdown.defaultHtmlRenderer blocks of
-                            Ok htmls ->
-                                htmls
-
-                            Err errmsg ->
-                                [ text <| "Error: " ++ errmsg ]
-
-                    Err errmsg ->
-                        [ text <| "Error: " ++ errmsg ]
-                )
+            , p [] <| Template.render model.input model.variables
             , viewVariables model
             , p []
                 [ h2 [] [ text "Parsed (Result String (List Markdown.Block)" ]
