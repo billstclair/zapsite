@@ -143,7 +143,7 @@ initialMarkdown =
     """# {title}
 ## Making web sites, that invite additions, with templates.
 
-The quick brown fox jumped over the lazy dog.
+The quick brown fox {verb} over the {adjective} dog.
 
 _italic_ **bold** **_bold italic_**
 
@@ -151,7 +151,7 @@ _italic_ **bold** **_bold italic_**
 
 {col1} | {col2}
 ------ | ------
-{rnc1} | {rnc2}
+{rn}, column 1 | {rn}, column 2
     """
 
 
@@ -175,10 +175,10 @@ init value url key =
             , ( "link-name", "google.com" )
             , ( "col1", "First Column" )
             , ( "col2", "Second Column" )
-            , ( "rnc11", "r1c1" )
-            , ( "rnc21", "r1c2" )
-            , ( "rnc12", "Row 2 column 1" )
-            , ( "rnc22", "Row 2 column 2" )
+            , ( "rn1", "Row 1" )
+            , ( "rn2", "Row 2" )
+            , ( "verb", "jumped" )
+            , ( "adjective", "lazy" )
             ]
     , page = TemplatePage
     , newvar = ""

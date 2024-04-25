@@ -22,6 +22,7 @@ import Markdown.Block as Markdown exposing (Block(..), Inline(..))
 import Markdown.Html
 import Markdown.Parser as Markdown
 import Markdown.Renderer as Markdown
+import Regex exposing (Regex)
 import Result as Result
 
 
@@ -160,7 +161,7 @@ replaceVariables variables blocks =
                     CodeSpan <| lookup s variables
 
                 Text s ->
-                    Text <| lookup s variables
+                    Text <| replaceTemplates variables s
 
                 _ ->
                     inline
@@ -197,20 +198,51 @@ replaceVariables variables blocks =
                     replaceAllRows tail
                         (replaceAllVariables cols :: res)
 
-        replaceAllRowVariables cols suffix =
+        replaceAllRowVariables : String -> List (List Inline) -> ( List (List Inline), Bool )
+        replaceAllRowVariables suffix cols =
             let
-                replaceOneCol col =
-                    List.map (replaceRowVariable suffix) col
-            in
-            List.map replaceOneCol cols
+                colLoop : List Inline -> List Inline -> Bool -> ( List Inline, Bool )
+                colLoop colsTail colsRes isNewRow =
+                    case colsTail of
+                        [] ->
+                            ( List.reverse colsRes, isNewRow )
 
+                        col :: colsRest ->
+                            let
+                                ( newcol, isnew ) =
+                                    replaceRowVariable suffix col
+                            in
+                            colLoop colsRest
+                                (newcol :: colsRes)
+                                (isNewRow || isnew)
+
+                loop : List (List Inline) -> List (List Inline) -> Bool -> ( List (List Inline), Bool )
+                loop colsTail res isNewRow =
+                    case colsTail of
+                        [] ->
+                            ( List.reverse res, isNewRow )
+
+                        col :: colsRest ->
+                            let
+                                ( newcol, isnew ) =
+                                    colLoop col [] isNewRow
+                            in
+                            loop colsRest (newcol :: res) isnew
+            in
+            loop cols [] False
+
+        replaceRowVariable : String -> Inline -> ( Inline, Bool )
         replaceRowVariable suffix inline =
             case inline of
                 Text s ->
-                    Text <| lookupWithSuffix s suffix variables
+                    let
+                        ( news, isNewRow ) =
+                            replaceTemplatesWithSuffix variables suffix s
+                    in
+                    ( Text news, isNewRow )
 
                 _ ->
-                    inline
+                    ( inline, False )
 
         duplicateRow : List (List Inline) -> List (List (List Inline))
         duplicateRow cols =
@@ -220,10 +252,10 @@ replaceVariables variables blocks =
                         nstr =
                             String.fromInt n
 
-                        replacedCols =
-                            replaceAllRowVariables cols nstr
+                        ( replacedCols, isNewRow ) =
+                            replaceAllRowVariables nstr cols
                     in
-                    if replacedCols == cols then
+                    if not isNewRow then
                         List.reverse res
 
                     else
@@ -250,3 +282,82 @@ replaceVariables variables blocks =
             Markdown.walk walkOne block
     in
     walkTemplate variables walker blocks
+
+
+templateRegex =
+    Maybe.withDefault Regex.never <| Regex.fromString "{[^}]*}"
+
+
+replaceTemplates : Variables -> String -> String
+replaceTemplates variables string =
+    let
+        replace matches res =
+            case matches of
+                [] ->
+                    res
+
+                { index, match } :: rest ->
+                    let
+                        len =
+                            String.length match
+
+                        var =
+                            String.slice (index + 1) (index + len - 1) res
+                    in
+                    let
+                        newres =
+                            case Dict.get var variables of
+                                Just val ->
+                                    String.left index res
+                                        ++ val
+                                        ++ String.dropLeft (index + len) res
+
+                                Nothing ->
+                                    res
+                    in
+                    replace rest newres
+    in
+    replace (List.reverse <| Regex.find templateRegex string) string
+
+
+replaceTemplatesWithSuffix : Variables -> String -> String -> ( String, Bool )
+replaceTemplatesWithSuffix variables suffix string =
+    let
+        replace matches res isRow =
+            case matches of
+                [] ->
+                    ( res, isRow )
+
+                { index, match } :: rest ->
+                    let
+                        len =
+                            String.length match
+
+                        var =
+                            String.slice (index + 1) (index + len - 1) res
+                    in
+                    let
+                        ( newres, newIsRow ) =
+                            case Dict.get var variables of
+                                Just val ->
+                                    ( String.left index res
+                                        ++ val
+                                        ++ String.dropLeft (index + len) res
+                                    , isRow
+                                    )
+
+                                Nothing ->
+                                    case Dict.get (var ++ suffix) variables of
+                                        Just val ->
+                                            ( String.left index res
+                                                ++ val
+                                                ++ String.dropLeft (index + len) res
+                                            , True
+                                            )
+
+                                        Nothing ->
+                                            ( res, isRow )
+                    in
+                    replace rest newres newIsRow
+    in
+    replace (List.reverse <| Regex.find templateRegex string) string False
