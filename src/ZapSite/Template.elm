@@ -24,6 +24,7 @@ import Markdown.Parser as Markdown
 import Markdown.Renderer as Markdown
 import Regex exposing (Regex)
 import Result as Result
+import Url
 
 
 {-| A key/value store
@@ -96,32 +97,34 @@ walkTemplate variables f blocks =
 
 lookupWithSuffix : String -> String -> Variables -> String
 lookupWithSuffix string suffix variables =
-    case isTemplate string of
-        Just v ->
-            case Dict.get (v ++ suffix) variables of
-                Just value ->
-                    value
-
-                Nothing ->
-                    string
-
-        Nothing ->
-            string
+    let
+        ( res, _ ) =
+            replaceTemplatesWithSuffix variables suffix string
+    in
+    res
 
 
 lookup : String -> Variables -> String
 lookup string variables =
-    case isTemplate string of
-        Just v ->
-            case Dict.get v variables of
-                Just value ->
-                    value
+    replaceTemplates variables string
 
-                Nothing ->
-                    string
 
-        Nothing ->
-            string
+lookupUrl : String -> Variables -> String
+lookupUrl string variables =
+    replaceTemplates variables (percentDecode string)
+        |> percentEncode
+
+
+percentDecode : String -> String
+percentDecode string =
+    String.replace "%7D" "}" <|
+        String.replace "%7B" "{" string
+
+
+percentEncode : String -> String
+percentEncode string =
+    String.replace "}" "%7D" <|
+        String.replace "{" "%7B" string
 
 
 replaceVariables : Variables -> List Block -> List Block
@@ -141,7 +144,7 @@ replaceVariables variables blocks =
                             inline
 
                 Link url maybe inlines ->
-                    Link (lookup url variables) maybe <|
+                    Link (lookupUrl url variables) maybe <|
                         List.map replaceVariable inlines
 
                 Image url maybe inlines ->
