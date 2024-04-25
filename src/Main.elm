@@ -149,8 +149,8 @@ _italic_ **bold** **_bold italic_**
 
 [{link-name}]({link})
 
-{col1} | {col2}
------- | ------
+{col} 1 | {col} 2
+------- | -------
 {rn}, column 1 | {rn}, column 2
     """
 
@@ -173,8 +173,7 @@ init value url key =
             [ ( "title", "Zapsite" )
             , ( "link", "https://google.com" )
             , ( "link-name", "google.com" )
-            , ( "col1", "First Column" )
-            , ( "col2", "Second Column" )
+            , ( "col", "Column" )
             , ( "rn1", "Row 1" )
             , ( "rn2", "Row 2" )
             , ( "verb", "jumped" )
