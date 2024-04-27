@@ -87,10 +87,17 @@ import Markdown.Html
 import Markdown.Parser as Markdown
 import Markdown.Renderer as Markdown
 import Markdown.Scaffolded as Scaffolded
+import PortFunnel.LocalStorage as LocalStorage exposing (Label)
+import PortFunnel.Notification as Notification exposing (Permission(..))
+import PortFunnel.WebSocket as WebSocket exposing (Response(..))
+import PortFunnels exposing (FunnelDict, Handler(..))
 import Result as Result
 import Result.Extra as Result
+import Time exposing (Posix, Zone)
 import Url exposing (Url)
-import ZapSite.Template as Template exposing (Variables)
+import ZapSite.EncodeDecode as ED
+import ZapSite.Template as Template
+import ZapSite.Types as Types exposing (Page(..), SavedModel, Variables)
 
 
 main =
@@ -118,23 +125,48 @@ type Msg
     | UpdateVariableValue String String
     | UpdateNewVar String
     | UpdateNewVal String
-    | SetVariableValue String String
     | DeleteVariable String
     | AddNewVariable
+    | Process Value
+    | SetPage Page
 
 
-type Page
-    = MarkdownPage
-    | TemplatePage
+zeroTick : Posix
+zeroTick =
+    Time.millisToPosix 0
 
 
 type alias Model =
-    { input : String
+    { started : Bool
+    , tick : Posix
+    , input : String
     , parsed : Result String (List Markdown.Block)
     , variables : Variables
     , page : Page
     , newvar : String
     , newval : String
+    , funnelState : PortFunnels.State
+    }
+
+
+modelToSavedModel : Model -> SavedModel
+modelToSavedModel model =
+    { input = model.input
+    , variables = model.variables
+    , page = model.page
+    , newvar = model.newvar
+    , newval = model.newval
+    }
+
+
+savedModelToModel : SavedModel -> Model -> Model
+savedModelToModel sm model =
+    { model
+        | input = sm.input
+        , variables = sm.variables
+        , page = sm.page
+        , newvar = sm.newvar
+        , newval = sm.newval
     }
 
 
@@ -166,7 +198,9 @@ init value url key =
                 Ok s ->
                     s
     in
-    { input = initialMarkdown
+    { started = False
+    , tick = zeroTick
+    , input = initialMarkdown
     , parsed = parseMarkdown initialMarkdown
     , variables =
         Dict.fromList
@@ -182,6 +216,7 @@ init value url key =
     , page = TemplatePage
     , newvar = ""
     , newval = ""
+    , funnelState = initialFunnelState
     }
         |> withNoCmd
 
@@ -219,12 +254,6 @@ update msg model =
         UpdateNewVal val ->
             { model | newval = val } |> withNoCmd
 
-        SetVariableValue k v ->
-            { model
-                | variables = Dict.insert k v model.variables
-            }
-                |> withNoCmd
-
         DeleteVariable k ->
             { model
                 | variables = Dict.remove k model.variables
@@ -238,6 +267,25 @@ update msg model =
                 , newvar = ""
                 , newval = ""
             }
+                |> withNoCmd
+
+        Process value ->
+            case
+                PortFunnels.processValue funnelDict
+                    value
+                    model.funnelState
+                    model
+            of
+                Err error ->
+                    -- Maybe we should display an error here,
+                    -- but I don't think it will ever happen.
+                    model |> withNoCmd
+
+                Ok res ->
+                    res
+
+        SetPage page ->
+            { model | page = page }
                 |> withNoCmd
 
         _ ->
@@ -300,9 +348,7 @@ viewVariables model =
                         []
                     ]
                 , td []
-                    [ button "Set" <| SetVariableValue k v
-                    , text " "
-                    , button "Delete" <| DeleteVariable k
+                    [ button "Delete" <| DeleteVariable k
                     ]
                 ]
     in
@@ -378,3 +424,159 @@ viewError errorMessage =
     [ Html.pre [ style "white-space" "pre-wrap" ]
         [ Html.text errorMessage ]
     ]
+
+
+put : String -> Maybe Value -> Cmd Msg
+put key value =
+    localStorageSend (LocalStorage.put (Debug.log "put" key) value)
+
+
+get : String -> Cmd Msg
+get key =
+    localStorageSend <| Debug.log "LocalStorage" (LocalStorage.get key)
+
+
+getLabeled : String -> String -> Cmd Msg
+getLabeled label key =
+    localStorageSend
+        (Debug.log "LocalStorage" <|
+            LocalStorage.getLabeled label key
+        )
+
+
+listKeys : String -> Cmd Msg
+listKeys prefix =
+    localStorageSend (LocalStorage.listKeys prefix)
+
+
+listKeysLabeled : String -> String -> Cmd Msg
+listKeysLabeled label prefix =
+    localStorageSend (LocalStorage.listKeysLabeled label prefix)
+
+
+clearStorage : Cmd Msg
+clearStorage =
+    localStorageSend (LocalStorage.clear "")
+
+
+localStoragePrefix : String
+localStoragePrefix =
+    "SayUncle"
+
+
+initialFunnelState : PortFunnels.State
+initialFunnelState =
+    PortFunnels.initialState localStoragePrefix
+
+
+localStorageSend : LocalStorage.Message -> Cmd Msg
+localStorageSend message =
+    LocalStorage.send (getCmdPort LocalStorage.moduleName ())
+        message
+        initialFunnelState.storage
+
+
+webSocketSend : WebSocket.Message -> Cmd Msg
+webSocketSend message =
+    WebSocket.send (getCmdPort WebSocket.moduleName ()) <|
+        Debug.log "webSocketSend" message
+
+
+{-| The `model` parameter is necessary here for `PortFunnels.makeFunnelDict`.
+-}
+getCmdPort : String -> model -> (Value -> Cmd Msg)
+getCmdPort moduleName _ =
+    PortFunnels.getCmdPort Process moduleName False
+
+
+funnelDict : FunnelDict Model Msg
+funnelDict =
+    PortFunnels.makeFunnelDict
+        [ LocalStorageHandler storageHandler
+        , WebSocketHandler socketHandler
+        , NotificationHandler notificationHandler
+        ]
+        getCmdPort
+
+
+notificationHandler : Notification.Response -> PortFunnels.State -> Model -> ( Model, Cmd Msg )
+notificationHandler response state mdl =
+    mdl |> withNoCmd
+
+
+socketHandler : Response -> PortFunnels.State -> Model -> ( Model, Cmd Msg )
+socketHandler response state mdl =
+    mdl |> withNoCmd
+
+
+storageHandler : LocalStorage.Response -> PortFunnels.State -> Model -> ( Model, Cmd Msg )
+storageHandler response state model =
+    let
+        mdl =
+            { model
+                | started =
+                    if LocalStorage.isLoaded state.storage then
+                        True
+
+                    else
+                        model.started
+            }
+
+        cmd =
+            if mdl.started && not model.started && model.tick /= zeroTick then
+                get pk.model
+
+            else
+                Cmd.none
+    in
+    case response of
+        LocalStorage.ListKeysResponse { label, prefix, keys } ->
+            handleListKeysResponse label prefix keys mdl
+
+        LocalStorage.GetResponse { label, key, value } ->
+            case value of
+                Nothing ->
+                    mdl |> withNoCmd
+
+                Just v ->
+                    handleGetResponse label key v model
+
+        _ ->
+            mdl |> withCmd cmd
+
+
+handleListKeysResponse : Label -> String -> List String -> Model -> ( Model, Cmd Msg )
+handleListKeysResponse label prefix keys model =
+    case label of
+        Nothing ->
+            model |> withNoCmd
+
+        Just lab ->
+            model |> withNoCmd
+
+
+handleGetResponse : Label -> String -> Value -> Model -> ( Model, Cmd Msg )
+handleGetResponse label key value model =
+    case label of
+        Just lab ->
+            model |> withNoCmd
+
+        Nothing ->
+            if key == pk.model then
+                case ED.decodeSavedModel value of
+                    Err e ->
+                        model |> withNoCmd
+
+                    Ok savedModel ->
+                        savedModelToModel savedModel model
+                            |> withNoCmd
+
+            else
+                model |> withNoCmd
+
+
+{-| Persistent storage keys
+-}
+pk =
+    { model = "model"
+    }

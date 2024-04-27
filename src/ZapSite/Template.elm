@@ -10,7 +10,7 @@
 ----------------------------------------------------------------------
 
 
-module ZapSite.Template exposing (Variables, emptyVariables, render)
+module ZapSite.Template exposing (render)
 
 {-| Templates can be filled in from variable bindings.
 -}
@@ -25,19 +25,7 @@ import Markdown.Renderer as Markdown
 import Regex exposing (Regex)
 import Result as Result
 import Url
-
-
-{-| A key/value store
--}
-type alias Variables =
-    Dict String String
-
-
-{-| The empty key/value store
--}
-emptyVariables : Variables
-emptyVariables =
-    Dict.empty
+import ZapSite.Types as Types exposing (Variables)
 
 
 {-| Render a markdown string with template variables.
