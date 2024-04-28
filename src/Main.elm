@@ -301,35 +301,69 @@ view : Model -> Document Msg
 view model =
     { title = "Zapsite"
     , body =
-        [ div [ style "left-margin" "20px" ]
-            [ h1 [] [ text "Zapsite" ]
-            , h2 [] [ text "Current Playground" ]
-            , p []
-                [ text "Type in the textarea below, see rendering and data structure below." ]
-            , p []
-                [ textarea
-                    [ rows 18
-                    , cols 80
-                    , value model.input
-                    , onInput UpdateInput
+        [ div [ style "left-margin" "20px" ] <|
+            case model.page of
+                TemplatePage ->
+                    viewTemplatePage model
+
+                _ ->
+                    viewMainPage model
+        , div [ style "text-align" "center" ] <|
+            case model.page of
+                TemplatePage ->
+                    [ text "template "
+                    , a
+                        [ href "#"
+                        , onClick <| SetPage MainPage
+                        ]
+                        [ text "main" ]
                     ]
-                    []
-                ]
-            , p [] <| Template.render model.input model.variables
-            , viewVariables model
-            , p []
-                [ h2 [] [ text "Parsed (Result String (List Markdown.Block)" ]
-                , model.parsed
-                    |> Debug.toString
-                    |> text
-                ]
-            , p []
-                [ a [ href "https://github.com/billstclair/zapsite" ]
-                    [ text "GitHub" ]
-                ]
-            ]
+
+                _ ->
+                    [ a
+                        [ href "#"
+                        , onClick <| SetPage TemplatePage
+                        ]
+                        [ text "template" ]
+                    , text " main"
+                    ]
         ]
     }
+
+
+viewMainPage : Model -> List (Html Msg)
+viewMainPage model =
+    [ text "Main Page under construction." ]
+
+
+viewTemplatePage : Model -> List (Html Msg)
+viewTemplatePage model =
+    [ h1 [] [ text "Zapsite" ]
+    , h2 [] [ text "Current Playground" ]
+    , p []
+        [ text "Type in the textarea below, see rendering and data structure below." ]
+    , p []
+        [ textarea
+            [ rows 18
+            , cols 80
+            , value model.input
+            , onInput UpdateInput
+            ]
+            []
+        ]
+    , p [] <| Template.render model.input model.variables
+    , viewVariables model
+    , p []
+        [ h2 [] [ text "Parsed (Result String (List Markdown.Block)" ]
+        , model.parsed
+            |> Debug.toString
+            |> text
+        ]
+    , p []
+        [ a [ href "https://github.com/billstclair/zapsite" ]
+            [ text "GitHub" ]
+        ]
+    ]
 
 
 viewVariables : Model -> Html Msg
