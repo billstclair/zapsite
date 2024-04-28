@@ -482,12 +482,8 @@ viewError errorMessage =
 
 putModel : Model -> Cmd Msg
 putModel model =
-    let
-        mdl =
-            Debug.log "save model" model
-    in
     put pk.model
-        (modelToSavedModel mdl |> ED.encodeSavedModel |> Just)
+        (modelToSavedModel model |> ED.encodeSavedModel |> Just)
 
 
 getModel : Cmd Msg
