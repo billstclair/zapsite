@@ -230,35 +230,55 @@ parseMarkdown markdown =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        doStore =
+            case msg of
+                Process _ ->
+                    False
+
+                _ ->
+                    True
+
+        withStore =
+            if doStore then
+                \mdl ->
+                    ( mdl
+                    , putModel mdl
+                    )
+
+            else
+                \mdl ->
+                    mdl |> withNoCmd
+    in
     case msg of
         UpdateInput input ->
             { model
                 | input = input
                 , parsed = parseMarkdown input
             }
-                |> withNoCmd
+                |> withStore
 
         AddPair key value ->
-            model |> withNoCmd
+            model |> withStore
 
         DeletePair key ->
-            model |> withNoCmd
+            model |> withStore
 
         UpdateVariableValue var val ->
             { model | variables = Dict.insert var val model.variables }
-                |> withNoCmd
+                |> withStore
 
         UpdateNewVar var ->
-            { model | newvar = var } |> withNoCmd
+            { model | newvar = var } |> withStore
 
         UpdateNewVal val ->
-            { model | newval = val } |> withNoCmd
+            { model | newval = val } |> withStore
 
         DeleteVariable k ->
             { model
                 | variables = Dict.remove k model.variables
             }
-                |> withNoCmd
+                |> withStore
 
         AddNewVariable ->
             { model
@@ -267,7 +287,7 @@ update msg model =
                 , newvar = ""
                 , newval = ""
             }
-                |> withNoCmd
+                |> withStore
 
         Process value ->
             case
@@ -279,14 +299,14 @@ update msg model =
                 Err error ->
                     -- Maybe we should display an error here,
                     -- but I don't think it will ever happen.
-                    model |> withNoCmd
+                    model |> withStore
 
                 Ok res ->
                     res
 
         SetPage page ->
             { model | page = page }
-                |> withNoCmd
+                |> withStore
 
         _ ->
             model |> withNoCmd
@@ -458,6 +478,21 @@ viewError errorMessage =
     [ Html.pre [ style "white-space" "pre-wrap" ]
         [ Html.text errorMessage ]
     ]
+
+
+putModel : Model -> Cmd Msg
+putModel model =
+    let
+        mdl =
+            Debug.log "save model" model
+    in
+    put pk.model
+        (modelToSavedModel mdl |> ED.encodeSavedModel |> Just)
+
+
+getModel : Cmd Msg
+getModel =
+    get pk.model
 
 
 put : String -> Maybe Value -> Cmd Msg
