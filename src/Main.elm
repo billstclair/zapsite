@@ -113,11 +113,16 @@ main =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Sub.batch
+        [ PortFunnels.subscriptions Process model
+        , Time.every 900 Tick
+        ]
 
 
 type Msg
-    = OnUrlRequest UrlRequest
+    = SetZone Zone
+    | Tick Posix
+    | OnUrlRequest UrlRequest
     | OnUrlChange Url
     | UpdateInput String
     | AddPair String String
@@ -139,6 +144,7 @@ zeroTick =
 type alias Model =
     { started : Bool
     , tick : Posix
+    , here : Zone
     , input : String
     , parsed : Result String (List Markdown.Block)
     , variables : Variables
@@ -200,6 +206,7 @@ init value url key =
     in
     { started = False
     , tick = zeroTick
+    , here = Time.utc
     , input = initialMarkdown
     , parsed = parseMarkdown initialMarkdown
     , variables =
@@ -236,6 +243,9 @@ update msg model =
                 Process _ ->
                     False
 
+                Tick _ ->
+                    False
+
                 _ ->
                     True
 
@@ -251,6 +261,21 @@ update msg model =
                     mdl |> withNoCmd
     in
     case msg of
+        SetZone zone ->
+            { model | here = zone }
+                |> withNoCmd
+
+        Tick posix ->
+            (if model.tick == zeroTick then
+                { model
+                    | tick = posix
+                }
+
+             else
+                model
+            )
+                |> withNoCmd
+
         UpdateInput input ->
             { model
                 | input = input
@@ -526,7 +551,7 @@ clearStorage =
 
 localStoragePrefix : String
 localStoragePrefix =
-    "SayUncle"
+    "zapsite"
 
 
 initialFunnelState : PortFunnels.State
@@ -589,7 +614,7 @@ storageHandler response state model =
 
         cmd =
             if mdl.started && not model.started && model.tick /= zeroTick then
-                get pk.model
+                getModel
 
             else
                 Cmd.none

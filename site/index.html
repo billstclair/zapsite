@@ -20,6 +20,8 @@
     <script>
       // It's an application, so it doesn't need a div.
       var app = Elm['Main'].init({ flags: true });
+      var modules = ['LocalStorage', 'Notification', 'WebSocket'];
+      PortFunnel.subscribe(app, {modules: modules});
     </script>
   </body>
 </html>
