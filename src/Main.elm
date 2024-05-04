@@ -93,6 +93,7 @@ import PortFunnel.WebSocket as WebSocket exposing (Response(..))
 import PortFunnels exposing (FunnelDict, Handler(..))
 import Result as Result
 import Result.Extra as Result
+import Task
 import Time exposing (Posix, Zone)
 import Url exposing (Url)
 import ZapSite.EncodeDecode as ED
@@ -225,7 +226,10 @@ init value url key =
     , newval = ""
     , funnelState = initialFunnelState
     }
-        |> withNoCmd
+        |> withCmds
+            [ Task.perform Tick Time.now
+            , Task.perform SetZone Time.here
+            ]
 
 
 parseMarkdown : String -> Result String (List Markdown.Block)
@@ -266,15 +270,20 @@ update msg model =
                 |> withNoCmd
 
         Tick posix ->
-            (if model.tick == zeroTick then
+            if model.tick == zeroTick then
                 { model
                     | tick = posix
                 }
+                    |> withCmd
+                        (if model.started then
+                            getModel
 
-             else
-                model
-            )
-                |> withNoCmd
+                         else
+                            Cmd.none
+                        )
+
+            else
+                model |> withNoCmd
 
         UpdateInput input ->
             { model
@@ -602,6 +611,12 @@ socketHandler response state mdl =
 storageHandler : LocalStorage.Response -> PortFunnels.State -> Model -> ( Model, Cmd Msg )
 storageHandler response state model =
     let
+        rsp =
+            Debug.log "storageHandler response" response
+
+        stat =
+            (\_ -> Debug.log "  state" state) rsp
+
         mdl =
             { model
                 | started =
@@ -652,9 +667,14 @@ handleGetResponse label key value model =
             model |> withNoCmd
 
         Nothing ->
-            if key == pk.model then
+            if Debug.log "handleGetResponse" key == pk.model then
                 case ED.decodeSavedModel value of
                     Err e ->
+                        let
+                            m =
+                                JE.encode 0 value
+                                    |> Debug.log "  "
+                        in
                         model |> withNoCmd
 
                     Ok savedModel ->
