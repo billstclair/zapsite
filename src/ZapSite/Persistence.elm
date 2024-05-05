@@ -16,19 +16,23 @@ module ZapSite.Persistence exposing (Config, fsConfig, get, put, s3Config)
 -}
 
 import Dict exposing (Dict)
+import Platform.Cmd as Cmd
+import Task exposing (Task)
 
 
 type Config
-    = S3Config S3Config
-    | FSConfig FSCOnfig
+    = S3Config S3ConfigRec
+    | FSConfig FSConfigRec
 
 
-type alias S3Config =
+type alias S3ConfigRec =
     { name : String }
 
 
-type alias FSConfig =
-    { name : String }
+type alias FSConfigRec =
+    { name : String
+    , prefix : String
+    }
 
 
 s3Config : Config
@@ -38,24 +42,47 @@ s3Config =
 
 fsConfig : Config
 fsConfig =
-    FSCOnfig { name = "File System" }
+    FSConfig
+        { name = "File System"
+        , prefix = "site/"
+        }
 
 
-get : Config -> String -> Cmd msg
-get config key =
+get : Config -> (Result String String -> msg) -> String -> Cmd msg
+get config wrapper key =
     case config of
         S3Config _ ->
-            s3Get key
+            s3Get wrapper key
 
         FSConfig _ ->
-            fsGet key
+            fsGet wrapper key
 
 
-s3Get : String -> Cmd msg
-s3Get key =
-    Task.succeed key
+s3Get : (Result String String -> msg) -> String -> Cmd msg
+s3Get wrapper key =
+    Task.perform wrapper <| Task.succeed (Err "s3Get not implemented")
 
 
-fsGet : String -> Cmd msg
-fsGet key =
-    Task.succeed key
+fsGet : (Result String String -> msg) -> String -> Cmd msg
+fsGet wrapper key =
+    Task.perform wrapper <| Task.succeed (Err "fsGet not implemented")
+
+
+put : Config -> (Result String String -> msg) -> String -> String -> Cmd msg
+put config wrapper key val =
+    case config of
+        S3Config conf ->
+            s3Put conf wrapper key val
+
+        FSConfig conf ->
+            fsPut conf wrapper key val
+
+
+s3Put : S3ConfigRec -> (Result String String -> msg) -> String -> String -> Cmd msg
+s3Put config wrapper key val =
+    Task.perform wrapper <| Task.succeed (Err "s3Put not implemented.")
+
+
+fsPut : FSConfigRec -> (Result String String -> msg) -> String -> String -> Cmd msg
+fsPut config wrapper key val =
+    Task.perform wrapper <| Task.succeed (Err "fsPut not implemented.")
