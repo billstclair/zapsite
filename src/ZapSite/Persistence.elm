@@ -16,7 +16,6 @@ module ZapSite.Persistence exposing (Config, fsConfig, get, put, s3Config)
 -}
 
 import Dict exposing (Dict)
-import Platform.Cmd as Cmd
 import Task exposing (Task)
 
 
