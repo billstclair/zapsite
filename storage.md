@@ -16,3 +16,7 @@ put <key> <value>
 list <prefix>
 ```
 
+## S3 Storage
+
+Need two backing stores for a site that invites edits. One is the static content, approved by administrators. The other is user proposals, yet to be moderated. These need to be limited somehow. Maybe with accounts, and a simple human test that nobody will bother to crack (and it will be easy to crack).
+
