@@ -353,34 +353,39 @@ br =
 
 view : Model -> Document Msg
 view model =
+    let
+        pageDiv =
+            div [ style "text-align" "center" ] <|
+                case model.page of
+                    TemplatePage ->
+                        [ text "template "
+                        , a
+                            [ href "#"
+                            , onClick <| SetPage MainPage
+                            ]
+                            [ text "main" ]
+                        ]
+
+                    _ ->
+                        [ a
+                            [ href "#"
+                            , onClick <| SetPage TemplatePage
+                            ]
+                            [ text "template" ]
+                        , text " main"
+                        ]
+    in
     { title = "Zapsite"
     , body =
-        [ div [ style "left-margin" "20px" ] <|
+        [ pageDiv
+        , div [ style "left-margin" "20px" ] <|
             case model.page of
                 TemplatePage ->
                     viewTemplatePage model
 
                 _ ->
                     viewMainPage model
-        , div [ style "text-align" "center" ] <|
-            case model.page of
-                TemplatePage ->
-                    [ text "template "
-                    , a
-                        [ href "#"
-                        , onClick <| SetPage MainPage
-                        ]
-                        [ text "main" ]
-                    ]
-
-                _ ->
-                    [ a
-                        [ href "#"
-                        , onClick <| SetPage TemplatePage
-                        ]
-                        [ text "template" ]
-                    , text " main"
-                    ]
+        , pageDiv
         ]
     }
 
