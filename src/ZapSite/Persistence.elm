@@ -10,18 +10,20 @@
 ----------------------------------------------------------------------
 
 
-module ZapSite.Persistence exposing (Config, fsConfig, get, put, s3Config)
+module ZapSite.Persistence exposing (Config, fsConfig, get, localConfig, put, s3Config)
 
 {-| Persistence controls how your site data is stored.
 -}
 
 import Dict exposing (Dict)
+import Json.Encode as JE exposing (Value)
 import Task exposing (Task)
 
 
-type Config
+type Config msg
     = S3Config S3ConfigRec
     | FSConfig FSConfigRec
+    | LocalConfig (LocalConfigRec msg)
 
 
 type alias S3ConfigRec =
@@ -34,54 +36,96 @@ type alias FSConfigRec =
     }
 
 
-s3Config : Config
+type alias LocalConfigRec msg =
+    { name : String
+    , prefix : String
+    , getter : String -> Cmd msg
+    , putter : String -> Maybe Value -> Cmd msg
+    }
+
+
+s3Config : Config msg
 s3Config =
     S3Config { name = "Amazon S3" }
 
 
-fsConfig : Config
+fsConfig : Config msg
 fsConfig =
     FSConfig
         { name = "File System"
-        , prefix = "site/"
+        , prefix = "ZapSite/"
         }
 
 
-get : Config -> (Result String String -> msg) -> String -> Cmd msg
-get config wrapper key =
+localConfig : (String -> Cmd msg) -> (String -> Maybe Value -> Cmd msg) -> Config msg
+localConfig getter putter =
+    LocalConfig
+        { name = "LocalConfig"
+        , prefix = "ZapSite/"
+        , getter = getter
+        , putter = putter
+        }
+
+
+get : Config msg -> String -> Cmd msg
+get config key =
     case config of
-        S3Config _ ->
-            s3Get wrapper key
+        S3Config rec ->
+            s3Get rec key
 
-        FSConfig _ ->
-            fsGet wrapper key
+        FSConfig rec ->
+            fsGet rec key
 
-
-s3Get : (Result String String -> msg) -> String -> Cmd msg
-s3Get wrapper key =
-    Task.perform wrapper <| Task.succeed (Err "s3Get not implemented")
+        LocalConfig rec ->
+            localGet rec key
 
 
-fsGet : (Result String String -> msg) -> String -> Cmd msg
-fsGet wrapper key =
-    Task.perform wrapper <| Task.succeed (Err "fsGet not implemented")
+s3Get : S3ConfigRec -> String -> Cmd msg
+s3Get rec key =
+    Cmd.none
 
 
-put : Config -> (Result String String -> msg) -> String -> String -> Cmd msg
-put config wrapper key val =
+fsGet : FSConfigRec -> String -> Cmd msg
+fsGet rec key =
+    Cmd.none
+
+
+localGet : LocalConfigRec msg -> String -> Cmd msg
+localGet { prefix, getter } key =
+    getter (prefix ++ key)
+
+
+put : Config msg -> String -> String -> Cmd msg
+put config key val =
     case config of
         S3Config conf ->
-            s3Put conf wrapper key val
+            s3Put conf key val
 
         FSConfig conf ->
-            fsPut conf wrapper key val
+            fsPut conf key val
+
+        LocalConfig conf ->
+            localPut conf key val
 
 
-s3Put : S3ConfigRec -> (Result String String -> msg) -> String -> String -> Cmd msg
-s3Put config wrapper key val =
-    Task.perform wrapper <| Task.succeed (Err "s3Put not implemented.")
+s3Put : S3ConfigRec -> String -> String -> Cmd msg
+s3Put config key val =
+    Cmd.none
 
 
-fsPut : FSConfigRec -> (Result String String -> msg) -> String -> String -> Cmd msg
-fsPut config wrapper key val =
-    Task.perform wrapper <| Task.succeed (Err "fsPut not implemented.")
+fsPut : FSConfigRec -> String -> String -> Cmd msg
+fsPut config key val =
+    Cmd.none
+
+
+localPut : LocalConfigRec msg -> String -> String -> Cmd msg
+localPut { prefix, putter } key val =
+    let
+        v =
+            if val == "" then
+                Nothing
+
+            else
+                Just <| JE.string val
+    in
+    putter (prefix ++ key) v

@@ -18,6 +18,8 @@ put <key> <value>
 list <prefix>
 ```
 
+`localStorage` that doesn't go through a websocket to get to the backend is a debugging feature, used to develop the web site software.
+
 ## S3 Storage
 
 Need two backing stores for a site that invites edits. One is the static content, approved by administrators. The other is user proposals, yet to be moderated. These need to be limited somehow. Maybe with accounts, and a simple human test that nobody will bother to crack (and it will be easy to crack).
