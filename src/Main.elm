@@ -97,6 +97,7 @@ import Task
 import Time exposing (Posix, Zone)
 import Url exposing (Url)
 import ZapSite.EncodeDecode as ED
+import ZapSite.Persistence as Persistence
 import ZapSite.Template as Template
 import ZapSite.Types as Types exposing (Page(..), SavedModel, Variables)
 
@@ -146,6 +147,7 @@ type alias Model =
     { started : Bool
     , tick : Posix
     , here : Zone
+    , storage : Persistence.Config Msg
     , input : String
     , parsed : Result String (List Markdown.Block)
     , variables : Variables
@@ -208,6 +210,7 @@ init value url key =
     { started = False
     , tick = zeroTick
     , here = Time.utc
+    , storage = Persistence.localConfig storageGet storagePut
     , input = initialMarkdown
     , parsed = parseMarkdown initialMarkdown
     , variables =
@@ -535,6 +538,16 @@ put key value =
     localStorageSend (LocalStorage.put (Debug.log "put" key) value)
 
 
+storagePut : String -> Maybe Value -> Cmd Msg
+storagePut =
+    put
+
+
+storageGet : String -> Cmd Msg
+storageGet =
+    getLabeled "storage"
+
+
 get : String -> Cmd Msg
 get key =
     localStorageSend <| Debug.log "LocalStorage" (LocalStorage.get key)
@@ -665,11 +678,21 @@ handleListKeysResponse label prefix keys model =
             model |> withNoCmd
 
 
+handleGetStorageResponse : String -> Value -> Model -> ( Model, Cmd Msg )
+handleGetStorageResponse key value model =
+    -- TODO
+    model |> withNoCmd
+
+
 handleGetResponse : Label -> String -> Value -> Model -> ( Model, Cmd Msg )
 handleGetResponse label key value model =
     case label of
         Just lab ->
-            model |> withNoCmd
+            if lab == "storage" then
+                handleGetStorageResponse key value model
+
+            else
+                model |> withNoCmd
 
         Nothing ->
             if Debug.log "handleGetResponse" key == pk.model then
