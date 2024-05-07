@@ -20,6 +20,8 @@ import Json.Encode as JE exposing (Value)
 import Task exposing (Task)
 
 
+{-| Config instances are created with `s3Config`, `fsConfig`, and `localConfig`.
+-}
 type Config msg
     = S3Config S3ConfigRec
     | FSConfig FSConfigRec
