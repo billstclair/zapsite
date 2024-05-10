@@ -37,7 +37,8 @@ type Page
 
 
 type alias SavedModel =
-    { input : String
+    { editing : Bool
+    , input : String
     , variables : Variables
     , page : Page
     , newvar : String

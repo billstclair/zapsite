@@ -148,6 +148,7 @@ type alias Model =
     , tick : Posix
     , here : Zone
     , storage : Persistence.Config Msg
+    , editing : Bool
     , input : String
     , parsed : Result String (List Markdown.Block)
     , variables : Variables
@@ -160,7 +161,8 @@ type alias Model =
 
 modelToSavedModel : Model -> SavedModel
 modelToSavedModel model =
-    { input = model.input
+    { editing = model.editing
+    , input = model.input
     , variables = model.variables
     , page = model.page
     , newvar = model.newvar
@@ -171,7 +173,8 @@ modelToSavedModel model =
 savedModelToModel : SavedModel -> Model -> Model
 savedModelToModel sm model =
     { model
-        | input = sm.input
+        | editing = sm.editing
+        , input = sm.input
         , variables = sm.variables
         , page = sm.page
         , newvar = sm.newvar
@@ -211,6 +214,7 @@ init value url key =
     , tick = zeroTick
     , here = Time.utc
     , storage = Persistence.localConfig storageGet storagePut
+    , editing = True
     , input = initialMarkdown
     , parsed = parseMarkdown initialMarkdown
     , variables =
@@ -349,11 +353,6 @@ update msg model =
             model |> withNoCmd
 
 
-br : Html msg
-br =
-    Html.br [] []
-
-
 view : Model -> Document Msg
 view model =
     let
@@ -393,9 +392,34 @@ view model =
     }
 
 
+b : String -> Html msg
+b string =
+    Html.b [] [ text string ]
+
+
+br : Html msg
+br =
+    Html.br [] []
+
+
 viewMainPage : Model -> List (Html Msg)
 viewMainPage model =
-    [ text "Main Page under construction." ]
+    [ h1 [] [ text "Zapsite" ]
+    , h2 [] [ text "Create a web site." ]
+    , if model.editing then
+        div []
+            [ b "url: "
+            , input
+                [ type_ "text"
+                , width 50
+                ]
+                []
+            , br
+            ]
+
+      else
+        text ""
+    ]
 
 
 viewTemplatePage : Model -> List (Html Msg)
