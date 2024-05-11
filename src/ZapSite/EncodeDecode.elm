@@ -46,6 +46,7 @@ encodeSavedModel : SavedModel -> Value
 encodeSavedModel model =
     JE.object
         [ ( "editing", JE.bool model.editing )
+        , ( "url", JE.string model.url )
         , ( "input", JE.string model.input )
         , ( "variables", JE.dict identity JE.string model.variables )
         , ( "page", encodePage model.page )
@@ -63,6 +64,7 @@ savedModelDecoder : Decoder SavedModel
 savedModelDecoder =
     JD.succeed SavedModel
         |> optional "editing" JD.bool True
+        |> optional "url" JD.string ""
         |> optional "input" JD.string ""
         |> optional "variables" (JD.dict JD.string) Dict.empty
         |> optional "page" pageDecoder MainPage

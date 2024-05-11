@@ -38,6 +38,7 @@ type Page
 
 type alias SavedModel =
     { editing : Bool
+    , url : String
     , input : String
     , variables : Variables
     , page : Page

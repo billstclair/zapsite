@@ -126,6 +126,7 @@ type Msg
     | Tick Posix
     | OnUrlRequest UrlRequest
     | OnUrlChange Url
+    | SetUrl String
     | UpdateInput String
     | AddPair String String
     | DeletePair String
@@ -149,6 +150,7 @@ type alias Model =
     , here : Zone
     , storage : Persistence.Config Msg
     , editing : Bool
+    , url : String
     , input : String
     , parsed : Result String (List Markdown.Block)
     , variables : Variables
@@ -162,6 +164,7 @@ type alias Model =
 modelToSavedModel : Model -> SavedModel
 modelToSavedModel model =
     { editing = model.editing
+    , url = model.url
     , input = model.input
     , variables = model.variables
     , page = model.page
@@ -174,6 +177,7 @@ savedModelToModel : SavedModel -> Model -> Model
 savedModelToModel sm model =
     { model
         | editing = sm.editing
+        , url = sm.url
         , input = sm.input
         , variables = sm.variables
         , page = sm.page
@@ -215,6 +219,7 @@ init value url key =
     , here = Time.utc
     , storage = Persistence.localConfig storageGet storagePut
     , editing = True
+    , url = ""
     , input = initialMarkdown
     , parsed = parseMarkdown initialMarkdown
     , variables =
@@ -291,6 +296,10 @@ update msg model =
 
             else
                 model |> withNoCmd
+
+        SetUrl url ->
+            { model | url = url }
+                |> withStore
 
         UpdateInput input ->
             { model
@@ -402,20 +411,30 @@ br =
     Html.br [] []
 
 
+labeledInput : String -> String -> Int -> (String -> Msg) -> List (Html Msg)
+labeledInput label v w tagger =
+    [ b label
+    , b ": "
+    , input
+        [ type_ "text"
+        , width w
+        , value v
+        , onInput tagger
+        ]
+        []
+    , br
+    ]
+
+
 viewMainPage : Model -> List (Html Msg)
 viewMainPage model =
     [ h1 [] [ text "Zapsite" ]
     , h2 [] [ text "Create a web site." ]
     , if model.editing then
-        div []
-            [ b "url: "
-            , input
-                [ type_ "text"
-                , width 50
+        div [] <|
+            List.concat
+                [ labeledInput "url" model.url 20 SetUrl
                 ]
-                []
-            , br
-            ]
 
       else
         text ""
