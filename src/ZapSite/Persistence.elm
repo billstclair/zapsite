@@ -18,6 +18,7 @@ module ZapSite.Persistence exposing (Config, fsConfig, get, localConfig, put, s3
 import Dict exposing (Dict)
 import Json.Encode as JE exposing (Value)
 import Task exposing (Task)
+import ZapSite.Types as Types exposing (Variables)
 
 
 {-| Config instances are created with `s3Config`, `fsConfig`, and `localConfig`.
@@ -97,7 +98,7 @@ localGet { prefix, getter } key =
     getter (prefix ++ key)
 
 
-put : Config msg -> String -> String -> Cmd msg
+put : Config msg -> String -> Maybe Value -> Cmd msg
 put config key val =
     case config of
         S3Config conf ->
@@ -110,24 +111,60 @@ put config key val =
             localPut conf key val
 
 
-s3Put : S3ConfigRec -> String -> String -> Cmd msg
+s3Put : S3ConfigRec -> String -> Maybe Value -> Cmd msg
 s3Put config key val =
     Cmd.none
 
 
-fsPut : FSConfigRec -> String -> String -> Cmd msg
+fsPut : FSConfigRec -> String -> Maybe Value -> Cmd msg
 fsPut config key val =
     Cmd.none
 
 
-localPut : LocalConfigRec msg -> String -> String -> Cmd msg
+localPut : LocalConfigRec msg -> String -> Maybe Value -> Cmd msg
 localPut { prefix, putter } key val =
+    putter (prefix ++ key) val
+
+
+
+----------------------------------------------------------------------
+---
+--- The "database"
+---
+--------------------------------------------------------------------------------
+
+
+getTemplate : Config msg -> String -> Cmd msg
+getTemplate config url =
+    get config <| "=template=/" ++ url
+
+
+putTemplate : Config msg -> String -> String -> Cmd msg
+putTemplate config url value =
     let
         v =
-            if val == "" then
+            if value == "" then
                 Nothing
 
             else
-                Just <| JE.string val
+                Just <| JE.string value
     in
-    putter (prefix ++ key) v
+    put config ("=template=/" ++ url) v
+
+
+getValues : Config msg -> String -> Cmd msg
+getValues config url =
+    get config <| "=variables=/" ++ url
+
+
+putValues : Config msg -> String -> Variables -> Cmd msg
+putValues config url variables =
+    let
+        v =
+            if Dict.size variables == 0 then
+                Nothing
+
+            else
+                Just <| JE.dict identity JE.string variables
+    in
+    put config ("=variables=/" ++ url) v
