@@ -16,6 +16,7 @@ module ZapSite.Persistence exposing (Config, fsConfig, get, localConfig, put, s3
 -}
 
 import Dict exposing (Dict)
+import Json.Decode as JD exposing (Decoder)
 import Json.Encode as JE exposing (Value)
 import Task exposing (Task)
 import ZapSite.Types as Types exposing (Variables)
@@ -134,9 +135,19 @@ localPut { prefix, putter } key val =
 --------------------------------------------------------------------------------
 
 
+templatePrefix : String
+templatePrefix =
+    "=template=/"
+
+
+templatePrefixLength : Int
+templatePrefixLength =
+    String.length templatePrefix
+
+
 getTemplate : Config msg -> String -> Cmd msg
 getTemplate config url =
-    get config <| "=template=/" ++ url
+    get config <| templatePrefix ++ url
 
 
 putTemplate : Config msg -> String -> String -> Cmd msg
@@ -149,12 +160,40 @@ putTemplate config url value =
             else
                 Just <| JE.string value
     in
-    put config ("=template=/" ++ url) v
+    put config (templatePrefix ++ url) v
+
+
+decodeTemplate : String -> Value -> Maybe String
+decodeTemplate key value =
+    if String.left templatePrefixLength key == templatePrefix then
+        case JD.decodeValue JD.string value of
+            Ok s ->
+                Just s
+
+            Err e ->
+                let
+                    e2 =
+                        Debug.log "decodeTemplate error" e
+                in
+                Nothing
+
+    else
+        Nothing
+
+
+variablesPrefix : String
+variablesPrefix =
+    "=variables=/"
+
+
+variablesPrefixLength : Int
+variablesPrefixLength =
+    String.length variablesPrefix
 
 
 getValues : Config msg -> String -> Cmd msg
 getValues config url =
-    get config <| "=variables=/" ++ url
+    get config <| variablesPrefix ++ url
 
 
 putValues : Config msg -> String -> Variables -> Cmd msg
@@ -168,3 +207,21 @@ putValues config url variables =
                 Just <| JE.dict identity JE.string variables
     in
     put config ("=variables=/" ++ url) v
+
+
+decodeVariables : String -> Value -> Maybe Variables
+decodeVariables key value =
+    if String.left variablesPrefixLength key == variablesPrefix then
+        case JD.decodeValue (JD.dict JD.string) value of
+            Ok s ->
+                Just s
+
+            Err e ->
+                let
+                    e2 =
+                        Debug.log "decodeVariables error" e
+                in
+                Nothing
+
+    else
+        Nothing

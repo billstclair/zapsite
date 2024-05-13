@@ -149,6 +149,7 @@ type alias Model =
     , tick : Posix
     , here : Zone
     , storage : Persistence.Config Msg
+    , getStorageWrapper : Maybe (Value -> Msg)
     , editing : Bool
     , url : String
     , input : String
@@ -218,6 +219,7 @@ init value url key =
     , tick = zeroTick
     , here = Time.utc
     , storage = Persistence.localConfig storageGet storagePut
+    , getStorageWrapper = Nothing
     , editing = True
     , url = ""
     , input = initialMarkdown
@@ -581,14 +583,24 @@ put key value =
     localStorageSend (LocalStorage.put (Debug.log "put" key) value)
 
 
+storagePrefix : String
+storagePrefix =
+    "=storage=/"
+
+
+storagePrefixLength : Int
+storagePrefixLength =
+    String.length storagePrefix
+
+
 storagePut : String -> Maybe Value -> Cmd Msg
-storagePut =
-    put
+storagePut key =
+    put (storagePrefix ++ key)
 
 
 storageGet : String -> Cmd Msg
-storageGet =
-    getLabeled "storage"
+storageGet key =
+    getLabeled "storage" <| storagePrefix ++ key
 
 
 get : String -> Cmd Msg
@@ -724,7 +736,21 @@ handleListKeysResponse label prefix keys model =
 handleGetStorageResponse : String -> Value -> Model -> ( Model, Cmd Msg )
 handleGetStorageResponse key value model =
     -- TODO
-    model |> withNoCmd
+    case model.getStorageWrapper of
+        Nothing ->
+            model |> withNoCmd
+
+        Just wrapper ->
+            if String.left storagePrefixLength key == storagePrefix then
+                let
+                    subkey =
+                        String.dropLeft storagePrefixLength key
+                in
+                -- TODO
+                model |> withNoCmd
+
+            else
+                model |> withNoCmd
 
 
 handleGetResponse : Label -> String -> Value -> Model -> ( Model, Cmd Msg )
