@@ -10,7 +10,7 @@
 ----------------------------------------------------------------------
 
 
-module ZapSite.Persistence exposing (Config, fsConfig, get, localConfig, put, s3Config)
+module ZapSite.Persistence exposing (Config, fsConfig, get, getTemplate, getVariables, localConfig, maybeDecodeTemplate, maybeDecodeVariables, put, putTemplate, putVariables, s3Config)
 
 {-| Persistence controls how your site data is stored.
 -}
@@ -163,19 +163,10 @@ putTemplate config url value =
     put config (templatePrefix ++ url) v
 
 
-decodeTemplate : String -> Value -> Maybe String
-decodeTemplate key value =
+maybeDecodeTemplate : String -> Value -> Maybe (Result JD.Error String)
+maybeDecodeTemplate key value =
     if String.left templatePrefixLength key == templatePrefix then
-        case JD.decodeValue JD.string value of
-            Ok s ->
-                Just s
-
-            Err e ->
-                let
-                    e2 =
-                        Debug.log "decodeTemplate error" e
-                in
-                Nothing
+        Just <| JD.decodeValue JD.string value
 
     else
         Nothing
@@ -191,13 +182,13 @@ variablesPrefixLength =
     String.length variablesPrefix
 
 
-getValues : Config msg -> String -> Cmd msg
-getValues config url =
+getVariables : Config msg -> String -> Cmd msg
+getVariables config url =
     get config <| variablesPrefix ++ url
 
 
-putValues : Config msg -> String -> Variables -> Cmd msg
-putValues config url variables =
+putVariables : Config msg -> String -> Variables -> Cmd msg
+putVariables config url variables =
     let
         v =
             if Dict.size variables == 0 then
@@ -209,19 +200,10 @@ putValues config url variables =
     put config ("=variables=/" ++ url) v
 
 
-decodeVariables : String -> Value -> Maybe Variables
-decodeVariables key value =
+maybeDecodeVariables : String -> Value -> Maybe (Result JD.Error Variables)
+maybeDecodeVariables key value =
     if String.left variablesPrefixLength key == variablesPrefix then
-        case JD.decodeValue (JD.dict JD.string) value of
-            Ok s ->
-                Just s
-
-            Err e ->
-                let
-                    e2 =
-                        Debug.log "decodeVariables error" e
-                in
-                Nothing
+        Just <| JD.decodeValue (JD.dict JD.string) value
 
     else
         Nothing

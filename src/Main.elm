@@ -127,7 +127,7 @@ type Msg
     | OnUrlRequest UrlRequest
     | OnUrlChange Url
     | SetUrl String
-    | UpdateInput String
+    | UpdateTemplate String
     | AddPair String String
     | DeletePair String
     | UpdateVariableValue String String
@@ -149,10 +149,9 @@ type alias Model =
     , tick : Posix
     , here : Zone
     , storage : Persistence.Config Msg
-    , getStorageWrapper : Maybe (Value -> Msg)
     , editing : Bool
     , url : String
-    , input : String
+    , template : String
     , parsed : Result String (List Markdown.Block)
     , variables : Variables
     , page : Page
@@ -166,7 +165,7 @@ modelToSavedModel : Model -> SavedModel
 modelToSavedModel model =
     { editing = model.editing
     , url = model.url
-    , input = model.input
+    , template = model.template
     , variables = model.variables
     , page = model.page
     , newvar = model.newvar
@@ -179,7 +178,7 @@ savedModelToModel sm model =
     { model
         | editing = sm.editing
         , url = sm.url
-        , input = sm.input
+        , template = sm.template
         , variables = sm.variables
         , page = sm.page
         , newvar = sm.newvar
@@ -219,10 +218,9 @@ init value url key =
     , tick = zeroTick
     , here = Time.utc
     , storage = Persistence.localConfig storageGet storagePut
-    , getStorageWrapper = Nothing
     , editing = True
     , url = ""
-    , input = initialMarkdown
+    , template = initialMarkdown
     , parsed = parseMarkdown initialMarkdown
     , variables =
         Dict.fromList
@@ -232,7 +230,7 @@ init value url key =
             , ( "col", "Column" )
             , ( "rn1", "Row 1" )
             , ( "rn2", "Row 2" )
-            , ( "verb", "jumped" )
+            , ( "verb", "jumps" )
             , ( "adjective", "lazy" )
             ]
     , page = TemplatePage
@@ -303,10 +301,10 @@ update msg model =
             { model | url = url }
                 |> withStore
 
-        UpdateInput input ->
+        UpdateTemplate template ->
             { model
-                | input = input
-                , parsed = parseMarkdown input
+                | template = template
+                , parsed = parseMarkdown template
             }
                 |> withStore
 
@@ -453,12 +451,12 @@ viewTemplatePage model =
         [ textarea
             [ rows 18
             , cols 80
-            , value model.input
-            , onInput UpdateInput
+            , value model.template
+            , onInput UpdateTemplate
             ]
             []
         ]
-    , p [] <| Template.render model.input model.variables
+    , p [] <| Template.render model.template model.variables
     , viewVariables model
     , p []
         [ h2 [] [ text "Parsed (Result String (List Markdown.Block)" ]
@@ -735,22 +733,57 @@ handleListKeysResponse label prefix keys model =
 
 handleGetStorageResponse : String -> Value -> Model -> ( Model, Cmd Msg )
 handleGetStorageResponse key value model =
-    -- TODO
-    case model.getStorageWrapper of
-        Nothing ->
-            model |> withNoCmd
+    if String.left storagePrefixLength key /= storagePrefix then
+        let
+            e2 =
+                Debug.log "handleGetStorageResponse key" key
+        in
+        model |> withNoCmd
 
-        Just wrapper ->
-            if String.left storagePrefixLength key == storagePrefix then
-                let
-                    subkey =
-                        String.dropLeft storagePrefixLength key
-                in
-                -- TODO
-                model |> withNoCmd
+    else
+        let
+            subkey =
+                String.dropLeft storagePrefixLength key
+        in
+        case Persistence.maybeDecodeTemplate subkey value of
+            Nothing ->
+                case Persistence.maybeDecodeVariables subkey value of
+                    Nothing ->
+                        model |> withNoCmd
 
-            else
-                model |> withNoCmd
+                    Just result ->
+                        case result of
+                            Err e ->
+                                let
+                                    e2 =
+                                        Debug.log "handleGetStorageResponse error" e
+                                in
+                                model |> withNoCmd
+
+                            Ok variables ->
+                                -- TODO
+                                model |> withNoCmd
+
+            Just result ->
+                case result of
+                    Err e ->
+                        let
+                            e2 =
+                                Debug.log "handleGetStorageResponse error" e
+                        in
+                        model |> withNoCmd
+
+                    Ok template ->
+                        -- TODO
+                        { model
+                            | template = template
+                            , parsed = parseMarkdown template
+                        }
+                            |> withCmd
+                                (Persistence.getVariables
+                                    model.storage
+                                    model.url
+                                )
 
 
 handleGetResponse : Label -> String -> Value -> Model -> ( Model, Cmd Msg )
