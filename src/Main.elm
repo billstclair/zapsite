@@ -265,16 +265,15 @@ update msg model =
                 _ ->
                     True
 
-        withStore =
+        withStore : Model -> ( Model, Cmd Msg )
+        withStore mdl =
             if doStore then
-                \mdl ->
-                    ( mdl
-                    , putModel mdl
-                    )
+                ( mdl
+                , putModel mdl
+                )
 
             else
-                \mdl ->
-                    mdl |> withNoCmd
+                mdl |> withNoCmd
     in
     case msg of
         SetZone zone ->
@@ -298,8 +297,15 @@ update msg model =
                 model |> withNoCmd
 
         SetUrl url ->
-            { model | url = url }
-                |> withStore
+            let
+                getter =
+                    Persistence.getTemplate model.storage url
+
+                ( mdl, cmd ) =
+                    { model | url = url } |> withStore
+            in
+            mdl
+                |> withCmds [ getter, cmd ]
 
         UpdateTemplate template ->
             { model
