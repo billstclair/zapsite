@@ -38,7 +38,10 @@ type Page
 
 type alias SavedModel =
     { editing : Bool
+    , urlInput : String
     , url : String
+    , templateNameInput : String
+    , templateName : String
     , template : String
     , variables : Variables
     , page : Page

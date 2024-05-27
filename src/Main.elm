@@ -126,7 +126,13 @@ type Msg
     | Tick Posix
     | OnUrlRequest UrlRequest
     | OnUrlChange Url
-    | SetUrl String
+    | SetUrlInput String
+    | SetUrl
+    | RevertUrl
+    | SetTemplateNameInput String
+    | SetTemplateName
+    | RevertTemplateName
+    | LookupTemplateName
     | UpdateTemplate String
     | AddPair String String
     | DeletePair String
@@ -150,7 +156,10 @@ type alias Model =
     , here : Zone
     , storage : Persistence.Config Msg
     , editing : Bool
+    , urlInput : String
     , url : String
+    , templateNameInput : String
+    , templateName : String
     , template : String
     , parsed : Result String (List Markdown.Block)
     , variables : Variables
@@ -164,10 +173,13 @@ type alias Model =
 modelToSavedModel : Model -> SavedModel
 modelToSavedModel model =
     { editing = model.editing
+    , urlInput = model.urlInput
     , url = model.url
+    , templateNameInput = model.templateNameInput
+    , templateName = model.templateName
     , template = model.template
     , variables = model.variables
-    , page = model.page
+    , page = MainPage -- model.page
     , newvar = model.newvar
     , newval = model.newval
     }
@@ -177,10 +189,14 @@ savedModelToModel : SavedModel -> Model -> Model
 savedModelToModel sm model =
     { model
         | editing = sm.editing
+        , urlInput = sm.urlInput
         , url = sm.url
+        , templateNameInput = sm.templateNameInput
+        , templateName = sm.templateName
         , template = sm.template
         , variables = sm.variables
-        , page = sm.page
+
+        -- , page = sm.page
         , newvar = sm.newvar
         , newval = sm.newval
     }
@@ -219,7 +235,10 @@ init value url key =
     , here = Time.utc
     , storage = Persistence.localConfig storageGet storagePut
     , editing = True
+    , urlInput = ""
     , url = ""
+    , templateNameInput = ""
+    , templateName = ""
     , template = initialMarkdown
     , parsed = parseMarkdown initialMarkdown
     , variables =
@@ -233,7 +252,7 @@ init value url key =
             , ( "verb", "jumps" )
             , ( "adjective", "lazy" )
             ]
-    , page = TemplatePage
+    , page = MainPage
     , newvar = ""
     , newval = ""
     , funnelState = initialFunnelState
@@ -296,16 +315,37 @@ update msg model =
             else
                 model |> withNoCmd
 
-        SetUrl url ->
-            let
-                getter =
-                    Persistence.getTemplate model.storage url
+        SetUrlInput input ->
+            { model | urlInput = input }
+                |> withStore
 
-                ( mdl, cmd ) =
-                    { model | url = url } |> withStore
-            in
-            mdl
-                |> withCmds [ getter, cmd ]
+        SetUrl ->
+            -- TODO: initiate lookup of URL template name
+            { model | url = model.urlInput }
+                |> withStore
+
+        RevertUrl ->
+            { model | urlInput = model.url }
+                |> withStore
+
+        SetTemplateNameInput input ->
+            { model | templateNameInput = input }
+                |> withStore
+
+        SetTemplateName ->
+            -- TODO: initiate lookup of template.
+            -- Error if not found.
+            -- set model.template if found.
+            { model | templateName = model.templateNameInput }
+                |> withStore
+
+        RevertTemplateName ->
+            { model | templateNameInput = model.templateName }
+                |> withStore
+
+        LookupTemplateName ->
+            -- TODO
+            model |> withNoCmd
 
         UpdateTemplate template ->
             { model
@@ -394,7 +434,7 @@ view model =
     in
     { title = "Zapsite"
     , body =
-        [ pageDiv
+        [ text "" -- pageDiv
         , div [ style "left-margin" "20px" ] <|
             case model.page of
                 TemplatePage ->
@@ -402,7 +442,7 @@ view model =
 
                 _ ->
                     viewMainPage model
-        , pageDiv
+        , text "" -- pageDiv
         ]
     }
 
@@ -428,7 +468,6 @@ labeledInput label v w tagger =
         , onInput tagger
         ]
         []
-    , br
     ]
 
 
@@ -439,11 +478,50 @@ viewMainPage model =
     , if model.editing then
         div [] <|
             List.concat
-                [ labeledInput "url" model.url 20 SetUrl
+                [ labeledInput "url" model.urlInput 20 SetUrlInput
+                , if model.url == model.urlInput then
+                    []
+
+                  else
+                    [ text " "
+                    , button "set" SetUrl
+                    , text " "
+                    , button "revert" RevertUrl
+                    ]
+                , [ br ]
+                , labeledInput "template name" model.templateNameInput 20 SetTemplateNameInput
+                , if model.templateName == model.templateNameInput then
+                    [ text " "
+                    , button "lookup" LookupTemplateName
+                    ]
+
+                  else
+                    [ text " "
+                    , button "set" SetTemplateName
+                    , text " "
+                    , button "revert" RevertTemplateName
+                    , text " "
+                    , button "lookup" LookupTemplateName
+                    ]
+                , [ br ]
+                , [ p [] [ b "template:" ]
+                  , p []
+                        [ textarea
+                            [ rows 18
+                            , cols 80
+                            , value model.template
+                            , onInput UpdateTemplate
+                            ]
+                            []
+                        ]
+                  , viewVariables model
+                  , p [] [ Html.hr [] [] ]
+                  , p [] <| Template.render model.template model.variables
+                  ]
                 ]
 
       else
-        text ""
+        p [] <| Template.render model.template model.variables
     ]
 
 
@@ -498,8 +576,7 @@ viewVariables model =
                 ]
     in
     p []
-        [ h2 [] [ text "Variables:" ]
-        , br
+        [ p [] [ b "variables:" ]
         , table [] <|
             List.concat
                 [ [ tr []
