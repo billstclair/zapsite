@@ -516,6 +516,7 @@ viewMainPage model =
                   , viewVariables model
                   , p [] [ Html.hr [] [] ]
                   , p [] <| Template.render model.template model.variables
+                  , p [] [ Html.hr [] [] ]
                   , p []
                         [ a [ href "https://github.com/billstclair/zapsite" ]
                             [ text "GitHub" ]
