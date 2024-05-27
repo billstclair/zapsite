@@ -474,7 +474,6 @@ labeledInput label v w tagger =
 viewMainPage : Model -> List (Html Msg)
 viewMainPage model =
     [ h1 [] [ text "Zapsite" ]
-    , h2 [] [ text "Create a web site." ]
     , if model.editing then
         div [] <|
             List.concat
@@ -517,6 +516,10 @@ viewMainPage model =
                   , viewVariables model
                   , p [] [ Html.hr [] [] ]
                   , p [] <| Template.render model.template model.variables
+                  , p []
+                        [ a [ href "https://github.com/billstclair/zapsite" ]
+                            [ text "GitHub" ]
+                        ]
                   ]
                 ]
 
