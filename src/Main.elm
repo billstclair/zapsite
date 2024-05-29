@@ -834,7 +834,7 @@ handleGetStorageResponse key value model =
         in
         case Persistence.maybeDecodeTemplate subkey value of
             Nothing ->
-                case Persistence.maybeDecodeVariables subkey value of
+                case Persistence.maybeDecodeUrlBindings subkey value of
                     Nothing ->
                         model |> withNoCmd
 
@@ -847,7 +847,7 @@ handleGetStorageResponse key value model =
                                 in
                                 model |> withNoCmd
 
-                            Ok variables ->
+                            Ok urlBindings ->
                                 -- TODO
                                 model |> withNoCmd
 
@@ -866,11 +866,7 @@ handleGetStorageResponse key value model =
                             | template = template
                             , parsed = parseMarkdown template
                         }
-                            |> withCmd
-                                (Persistence.getVariables
-                                    model.storage
-                                    model.url
-                                )
+                            |> withNoCmd
 
 
 handleGetResponse : Label -> String -> Value -> Model -> ( Model, Cmd Msg )

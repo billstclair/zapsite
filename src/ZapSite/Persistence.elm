@@ -10,13 +10,28 @@
 ----------------------------------------------------------------------
 
 
-module ZapSite.Persistence exposing (Config, fsConfig, get, getTemplate, getVariables, localConfig, maybeDecodeTemplate, maybeDecodeVariables, put, putTemplate, putVariables, s3Config)
+module ZapSite.Persistence exposing
+    ( Config
+    , UrlBindings
+    , fsConfig
+    , get
+    , getTemplate
+    , getUrlBindings
+    , localConfig
+    , maybeDecodeTemplate
+    , maybeDecodeUrlBindings
+    , put
+    , putTemplate
+    , putUrlBindings
+    , s3Config
+    )
 
 {-| Persistence controls how your site data is stored.
 -}
 
 import Dict exposing (Dict)
 import Json.Decode as JD exposing (Decoder)
+import Json.Decode.Pipeline as DP exposing (custom, hardcoded, optional, required)
 import Json.Encode as JE exposing (Value)
 import Task exposing (Task)
 import ZapSite.Types as Types exposing (Variables)
@@ -132,7 +147,7 @@ localPut { prefix, putter } key val =
 ---
 --- The "database"
 ---
---------------------------------------------------------------------------------
+----------------------------------------------------------------------
 
 
 templatePrefix : String
@@ -146,12 +161,12 @@ templatePrefixLength =
 
 
 getTemplate : Config msg -> String -> Cmd msg
-getTemplate config url =
-    get config <| templatePrefix ++ url
+getTemplate config templateName =
+    get config <| templatePrefix ++ templateName
 
 
 putTemplate : Config msg -> String -> String -> Cmd msg
-putTemplate config url value =
+putTemplate config templateName value =
     let
         v =
             if value == "" then
@@ -160,7 +175,7 @@ putTemplate config url value =
             else
                 Just <| JE.string value
     in
-    put config (templatePrefix ++ url) v
+    put config (templatePrefix ++ templateName) v
 
 
 maybeDecodeTemplate : String -> Value -> Maybe (Result JD.Error String)
@@ -172,38 +187,56 @@ maybeDecodeTemplate key value =
         Nothing
 
 
-variablesPrefix : String
-variablesPrefix =
-    "=variables=/"
+type alias UrlBindings =
+    { templateName : String
+    , variables : Variables
+    }
 
 
-variablesPrefixLength : Int
-variablesPrefixLength =
-    String.length variablesPrefix
+encodeUrlBindings : String -> Variables -> Value
+encodeUrlBindings templateName variables =
+    JE.object
+        [ ( "templateName", JE.string templateName )
+        , ( "variables", JE.dict identity JE.string variables )
+        ]
 
 
-getVariables : Config msg -> String -> Cmd msg
-getVariables config url =
-    get config <| variablesPrefix ++ url
+urlBindingsDecoder : Decoder UrlBindings
+urlBindingsDecoder =
+    JD.succeed UrlBindings
+        |> required "templateName" JD.string
+        |> required "variables" (JD.dict JD.string)
 
 
-putVariables : Config msg -> String -> Variables -> Cmd msg
-putVariables config url variables =
+urlBindingsPrefix : String
+urlBindingsPrefix =
+    "=urlBindings=/"
+
+
+urlBindingsPrefixLength : Int
+urlBindingsPrefixLength =
+    String.length urlBindingsPrefix
+
+
+getUrlBindings : Config msg -> String -> Cmd msg
+getUrlBindings config url =
+    get config <| urlBindingsPrefix ++ url
+
+
+putUrlBindings : Config msg -> String -> String -> Variables -> Cmd msg
+putUrlBindings config url templateName variables =
     let
         v =
-            if Dict.size variables == 0 then
-                Nothing
-
-            else
-                Just <| JE.dict identity JE.string variables
+            encodeUrlBindings templateName variables
+                |> Just
     in
-    put config ("=variables=/" ++ url) v
+    put config (urlBindingsPrefix ++ url) v
 
 
-maybeDecodeVariables : String -> Value -> Maybe (Result JD.Error Variables)
-maybeDecodeVariables key value =
-    if String.left variablesPrefixLength key == variablesPrefix then
-        Just <| JD.decodeValue (JD.dict JD.string) value
+maybeDecodeUrlBindings : String -> Value -> Maybe (Result JD.Error UrlBindings)
+maybeDecodeUrlBindings key value =
+    if String.left urlBindingsPrefixLength key == urlBindingsPrefix then
+        Just <| JD.decodeValue urlBindingsDecoder value
 
     else
         Nothing
