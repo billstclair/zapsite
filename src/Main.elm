@@ -1,4 +1,4 @@
----------------------------------------------------------------------
+--------------------------------------------------------------------
 --
 -- Main.elm
 -- Zapsite, a simple web site editor, with user suggestion and merge support.
@@ -134,8 +134,6 @@ type Msg
     | RevertTemplateName
     | LookupTemplateName
     | UpdateTemplate String
-    | AddPair String String
-    | DeletePair String
     | UpdateVariableValue String String
     | UpdateNewVar String
     | UpdateNewVal String
@@ -281,19 +279,27 @@ update msg model =
                 Tick _ ->
                     False
 
+                LookupTemplateName ->
+                    False
+
                 _ ->
                     True
 
-        withStore : Model -> ( Model, Cmd Msg )
-        withStore mdl =
+        ( mdl, cmd ) =
+            updateInternal msg model
+
+        cmd2 =
             if doStore then
-                ( mdl
-                , putModel mdl
-                )
+                Cmd.batch [ cmd, putModel mdl ]
 
             else
-                mdl |> withNoCmd
+                cmd
     in
+    mdl |> withCmd cmd2
+
+
+updateInternal : Msg -> Model -> ( Model, Cmd Msg )
+updateInternal msg model =
     case msg of
         SetZone zone ->
             { model | here = zone }
@@ -317,31 +323,31 @@ update msg model =
 
         SetUrlInput input ->
             { model | urlInput = input }
-                |> withStore
+                |> withNoCmd
 
         SetUrl ->
             -- TODO: initiate lookup of URL template name
             { model | url = model.urlInput }
-                |> withStore
+                |> withNoCmd
 
         RevertUrl ->
             { model | urlInput = model.url }
-                |> withStore
+                |> withNoCmd
 
         SetTemplateNameInput input ->
             { model | templateNameInput = input }
-                |> withStore
+                |> withNoCmd
 
         SetTemplateName ->
             -- TODO: initiate lookup of template.
             -- Error if not found.
             -- set model.template if found.
             { model | templateName = model.templateNameInput }
-                |> withStore
+                |> withNoCmd
 
         RevertTemplateName ->
             { model | templateNameInput = model.templateName }
-                |> withStore
+                |> withNoCmd
 
         LookupTemplateName ->
             -- TODO
@@ -352,29 +358,23 @@ update msg model =
                 | template = template
                 , parsed = parseMarkdown template
             }
-                |> withStore
-
-        AddPair key value ->
-            model |> withStore
-
-        DeletePair key ->
-            model |> withStore
+                |> withNoCmd
 
         UpdateVariableValue var val ->
             { model | variables = Dict.insert var val model.variables }
-                |> withStore
+                |> withNoCmd
 
         UpdateNewVar var ->
-            { model | newvar = var } |> withStore
+            { model | newvar = var } |> withNoCmd
 
         UpdateNewVal val ->
-            { model | newval = val } |> withStore
+            { model | newval = val } |> withNoCmd
 
         DeleteVariable k ->
             { model
                 | variables = Dict.remove k model.variables
             }
-                |> withStore
+                |> withNoCmd
 
         AddNewVariable ->
             { model
@@ -383,7 +383,7 @@ update msg model =
                 , newvar = ""
                 , newval = ""
             }
-                |> withStore
+                |> withNoCmd
 
         Process value ->
             case
@@ -395,14 +395,14 @@ update msg model =
                 Err error ->
                     -- Maybe we should display an error here,
                     -- but I don't think it will ever happen.
-                    model |> withStore
+                    model |> withNoCmd
 
                 Ok res ->
                     res
 
         SetPage page ->
             { model | page = page }
-                |> withStore
+                |> withNoCmd
 
         _ ->
             model |> withNoCmd
