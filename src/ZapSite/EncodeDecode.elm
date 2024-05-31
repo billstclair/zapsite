@@ -50,7 +50,9 @@ encodeSavedModel model =
         , ( "url", JE.string model.url )
         , ( "templateNameInput", JE.string model.templateNameInput )
         , ( "templateName", JE.string model.templateName )
+        , ( "templateInput", JE.string model.templateInput )
         , ( "template", JE.string model.template )
+        , ( "variablesInput", JE.dict identity JE.string model.variablesInput )
         , ( "variables", JE.dict identity JE.string model.variables )
         , ( "page", encodePage model.page )
         , ( "newvar", JE.string model.newvar )
@@ -71,7 +73,9 @@ savedModelDecoder =
         |> optional "url" JD.string ""
         |> optional "templateNameInput" JD.string ""
         |> optional "templateName" JD.string ""
+        |> optional "templateInput" JD.string ""
         |> optional "template" JD.string ""
+        |> optional "variablesInput" (JD.dict JD.string) Dict.empty
         |> optional "variables" (JD.dict JD.string) Dict.empty
         |> optional "page" pageDecoder MainPage
         |> optional "newvar" JD.string ""

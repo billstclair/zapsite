@@ -133,12 +133,17 @@ type Msg
     | SetTemplateName
     | RevertTemplateName
     | LookupTemplateName
-    | UpdateTemplate String
+    | UpdateTemplateInput String
+    | SetTemplate
+    | RevertTemplate
     | UpdateVariableValue String String
     | UpdateNewVar String
     | UpdateNewVal String
     | DeleteVariable String
     | AddNewVariable
+    | SetVariables
+    | RevertVariables
+    | ClearVariables
     | Process Value
     | SetPage Page
 
@@ -158,8 +163,10 @@ type alias Model =
     , url : String
     , templateNameInput : String
     , templateName : String
+    , templateInput : String
     , template : String
     , parsed : Result String (List Markdown.Block)
+    , variablesInput : Variables
     , variables : Variables
     , page : Page
     , newvar : String
@@ -175,7 +182,9 @@ modelToSavedModel model =
     , url = model.url
     , templateNameInput = model.templateNameInput
     , templateName = model.templateName
+    , templateInput = model.templateInput
     , template = model.template
+    , variablesInput = model.variablesInput
     , variables = model.variables
     , page = MainPage -- model.page
     , newvar = model.newvar
@@ -191,7 +200,9 @@ savedModelToModel sm model =
         , url = sm.url
         , templateNameInput = sm.templateNameInput
         , templateName = sm.templateName
+        , templateInput = sm.templateInput
         , template = sm.template
+        , variablesInput = sm.variablesInput
         , variables = sm.variables
 
         -- , page = sm.page
@@ -217,6 +228,20 @@ _italic_ **bold** **_bold italic_**
     """
 
 
+initialVariables : Variables
+initialVariables =
+    Dict.fromList
+        [ ( "title", "Zapsite" )
+        , ( "link", "https://google.com" )
+        , ( "link-name", "google.com" )
+        , ( "col", "Column" )
+        , ( "rn1", "Row 1" )
+        , ( "rn2", "Row 2" )
+        , ( "verb", "jumps" )
+        , ( "adjective", "lazy" )
+        ]
+
+
 init : Value -> Url -> Key -> ( Model, Cmd Msg )
 init value url key =
     let
@@ -237,19 +262,11 @@ init value url key =
     , url = ""
     , templateNameInput = ""
     , templateName = ""
+    , templateInput = initialMarkdown
     , template = initialMarkdown
     , parsed = parseMarkdown initialMarkdown
-    , variables =
-        Dict.fromList
-            [ ( "title", "Zapsite" )
-            , ( "link", "https://google.com" )
-            , ( "link-name", "google.com" )
-            , ( "col", "Column" )
-            , ( "rn1", "Row 1" )
-            , ( "rn2", "Row 2" )
-            , ( "verb", "jumps" )
-            , ( "adjective", "lazy" )
-            ]
+    , variablesInput = initialVariables
+    , variables = initialVariables
     , page = MainPage
     , newvar = ""
     , newval = ""
@@ -301,6 +318,14 @@ update msg model =
 updateInternal : Msg -> Model -> ( Model, Cmd Msg )
 updateInternal msg model =
     case msg of
+        OnUrlRequest url ->
+            -- TODO
+            model |> withNoCmd
+
+        OnUrlChange url ->
+            -- TODO
+            model |> withNoCmd
+
         SetZone zone ->
             { model | here = zone }
                 |> withNoCmd
@@ -353,15 +378,24 @@ updateInternal msg model =
             -- TODO
             model |> withNoCmd
 
-        UpdateTemplate template ->
+        UpdateTemplateInput template ->
             { model
-                | template = template
+                | templateInput = template
                 , parsed = parseMarkdown template
             }
                 |> withNoCmd
 
+        SetTemplate ->
+            -- TODO
+            { model | template = model.templateInput }
+                |> withNoCmd
+
+        RevertTemplate ->
+            { model | templateInput = model.template }
+                |> withNoCmd
+
         UpdateVariableValue var val ->
-            { model | variables = Dict.insert var val model.variables }
+            { model | variablesInput = Dict.insert var val model.variablesInput }
                 |> withNoCmd
 
         UpdateNewVar var ->
@@ -372,17 +406,30 @@ updateInternal msg model =
 
         DeleteVariable k ->
             { model
-                | variables = Dict.remove k model.variables
+                | variablesInput = Dict.remove k model.variablesInput
             }
                 |> withNoCmd
 
         AddNewVariable ->
             { model
-                | variables =
-                    Dict.insert model.newvar model.newval model.variables
+                | variablesInput =
+                    Dict.insert model.newvar model.newval model.variablesInput
                 , newvar = ""
                 , newval = ""
             }
+                |> withNoCmd
+
+        SetVariables ->
+            -- TODO
+            { model | variables = model.variablesInput }
+                |> withNoCmd
+
+        RevertVariables ->
+            { model | variablesInput = model.variables }
+                |> withNoCmd
+
+        ClearVariables ->
+            { model | variablesInput = Dict.empty }
                 |> withNoCmd
 
         Process value ->
@@ -403,9 +450,6 @@ updateInternal msg model =
         SetPage page ->
             { model | page = page }
                 |> withNoCmd
-
-        _ ->
-            model |> withNoCmd
 
 
 view : Model -> Document Msg
@@ -503,19 +547,29 @@ viewMainPage model =
                     , button "lookup" LookupTemplateName
                     ]
                 , [ br ]
-                , [ p [] [ b "template:" ]
+                , [ let
+                        disabled =
+                            model.template == model.templateInput
+                    in
+                    p []
+                        [ b "template:"
+                        , br
+                        , disabledButton disabled "save" SetTemplate
+                        , text " "
+                        , disabledButton disabled "revert" RevertTemplate
+                        ]
                   , p []
                         [ textarea
                             [ rows 18
                             , cols 80
-                            , value model.template
-                            , onInput UpdateTemplate
+                            , value model.templateInput
+                            , onInput UpdateTemplateInput
                             ]
                             []
                         ]
                   , viewVariables model
                   , p [] [ Html.hr [] [] ]
-                  , p [] <| Template.render model.template model.variables
+                  , p [] <| Template.render model.templateInput model.variablesInput
                   , p [] [ Html.hr [] [] ]
                   , p []
                         [ a [ href "https://github.com/billstclair/zapsite" ]
@@ -525,7 +579,7 @@ viewMainPage model =
                 ]
 
       else
-        p [] <| Template.render model.template model.variables
+        p [] <| Template.render model.templateInput model.variablesInput
     ]
 
 
@@ -539,12 +593,12 @@ viewTemplatePage model =
         [ textarea
             [ rows 18
             , cols 80
-            , value model.template
-            , onInput UpdateTemplate
+            , value model.templateInput
+            , onInput UpdateTemplateInput
             ]
             []
         ]
-    , p [] <| Template.render model.template model.variables
+    , p [] <| Template.render model.templateInput model.variablesInput
     , viewVariables model
     , p []
         [ h2 [] [ text "Parsed (Result String (List Markdown.Block)" ]
@@ -580,7 +634,21 @@ viewVariables model =
                 ]
     in
     p []
-        [ p [] [ b "variables:" ]
+        [ let
+            disabled =
+                model.variables == model.variablesInput
+          in
+          p []
+            [ b "variables:"
+            , br
+            , disabledButton disabled "save" SetVariables
+            , text " "
+            , disabledButton disabled "revert" RevertVariables
+            , text " "
+            , disabledButton (model.variablesInput == Dict.empty)
+                "clear"
+                ClearVariables
+            ]
         , table [] <|
             List.concat
                 [ [ tr []
@@ -589,7 +657,7 @@ viewVariables model =
                         , th [] [ text "Action" ]
                         ]
                   ]
-                , model.variables
+                , model.variablesInput
                     |> Dict.toList
                     |> List.map viewRow
                 , [ tr []
@@ -622,6 +690,15 @@ viewVariables model =
 button : String -> Msg -> Html Msg
 button label msg =
     Html.button [ onClick msg ]
+        [ text label ]
+
+
+disabledButton : Bool -> String -> Msg -> Html Msg
+disabledButton isDisabled label msg =
+    Html.button
+        [ onClick msg
+        , disabled isDisabled
+        ]
         [ text label ]
 
 

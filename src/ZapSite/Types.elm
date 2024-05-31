@@ -42,7 +42,9 @@ type alias SavedModel =
     , url : String
     , templateNameInput : String
     , templateName : String
+    , templateInput : String
     , template : String
+    , variablesInput : Variables
     , variables : Variables
     , page : Page
     , newvar : String
