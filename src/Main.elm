@@ -158,6 +158,7 @@ type alias Model =
     , tick : Posix
     , here : Zone
     , storage : Persistence.Config Msg
+    , error : Maybe String
     , editing : Bool
     , urlInput : String
     , url : String
@@ -257,6 +258,7 @@ init value url key =
     , tick = zeroTick
     , here = Time.utc
     , storage = Persistence.localConfig storageGet storagePut
+    , error = Nothing
     , editing = True
     , urlInput = ""
     , url = ""
@@ -353,7 +355,7 @@ updateInternal msg model =
         SetUrl ->
             -- TODO: initiate lookup of URL template name
             { model | url = model.urlInput }
-                |> withNoCmd
+                |> withCmd (Persistence.getUrlBindings model.storage model.urlInput)
 
         RevertUrl ->
             { model | urlInput = model.url }
@@ -364,11 +366,21 @@ updateInternal msg model =
                 |> withNoCmd
 
         SetTemplateName ->
-            -- TODO: initiate lookup of template.
-            -- Error if not found.
-            -- set model.template if found.
-            { model | templateName = model.templateNameInput }
-                |> withNoCmd
+            let
+                name =
+                    model.templateNameInput
+            in
+            if name /= "" then
+                model
+                    |> withCmd (Persistence.getTemplate model.storage name)
+
+            else
+                { model
+                    | templateName = ""
+                    , templateInput = ""
+                    , variables = Dict.empty
+                }
+                    |> withNoCmd
 
         RevertTemplateName ->
             { model | templateNameInput = model.templateName }
@@ -386,9 +398,32 @@ updateInternal msg model =
                 |> withNoCmd
 
         SetTemplate ->
-            -- TODO
-            { model | template = model.templateInput }
-                |> withNoCmd
+            let
+                name =
+                    model.templateName
+            in
+            if name /= model.templateNameInput then
+                { model
+                    | error = Just "Save template name to set new template."
+                }
+                    |> withNoCmd
+
+            else if name == "" then
+                { model
+                    | error = Just "Can't save template with blank name."
+                }
+                    |> withNoCmd
+
+            else
+                { model
+                    | template = model.templateInput
+                    , error = Nothing
+                }
+                    |> withCmd
+                        (Persistence.putTemplate model.storage
+                            name
+                            model.template
+                        )
 
         RevertTemplate ->
             { model | templateInput = model.template }
@@ -420,9 +455,30 @@ updateInternal msg model =
                 |> withNoCmd
 
         SetVariables ->
-            -- TODO
-            { model | variables = model.variablesInput }
-                |> withNoCmd
+            let
+                url =
+                    model.url
+
+                templateName =
+                    model.templateName
+            in
+            if url /= model.urlInput || templateName /= model.templateNameInput then
+                { model
+                    | error = Just "Save url & template name to save variables."
+                }
+                    |> withNoCmd
+
+            else
+                { model
+                    | variables = model.variablesInput
+                    , error = Nothing
+                }
+                    |> withCmd
+                        (Persistence.putUrlBindings model.storage
+                            url
+                            templateName
+                            model.variablesInput
+                        )
 
         RevertVariables ->
             { model | variablesInput = model.variables }
@@ -913,6 +969,7 @@ handleGetStorageResponse key value model =
             Nothing ->
                 case Persistence.maybeDecodeUrlBindings subkey value of
                     Nothing ->
+                        -- TODO
                         model |> withNoCmd
 
                     Just result ->
