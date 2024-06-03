@@ -978,10 +978,25 @@ handleGetStorageResponse key value model =
                             |> withNoCmd
 
                     Ok template ->
+                        let
+                            ( templ, templInput, error ) =
+                                case template of
+                                    Nothing ->
+                                        ( model.template
+                                        , ""
+                                        , Just <|
+                                            "There is no template named "
+                                                ++ templateKey
+                                        )
+
+                                    Just tmpl ->
+                                        ( tmpl, tmpl, Nothing )
+                        in
                         { model
-                            | templateInput = template
-                            , template = template
-                            , parsed = parseMarkdown template
+                            | error = error
+                            , template = templ
+                            , templateInput = templInput
+                            , parsed = parseMarkdown templ
                         }
                             |> withNoCmd
 
@@ -993,19 +1008,43 @@ handleGetStorageResponse key value model =
                                 { model
                                     | error =
                                         Just <|
-                                            "Error decoding storage urlBindings Key: "
+                                            "Error decoding storage url bindings: "
                                                 ++ urlBindingsKey
                                                 ++ ", "
                                                 ++ JD.errorToString e
                                 }
                                     |> withNoCmd
 
-                            Ok { templateName, variables } ->
+                            Ok bindings ->
+                                let
+                                    ( templateNameAndInput, variablesAndInput, error ) =
+                                        case bindings of
+                                            Nothing ->
+                                                ( ( model.templateName, "" )
+                                                , ( model.variablesInput, Dict.empty )
+                                                , Just <|
+                                                    "There are no bindings for url: "
+                                                        ++ urlBindingsKey
+                                                )
+
+                                            Just bind ->
+                                                ( ( bind.templateName, bind.templateName )
+                                                , ( bind.variables, bind.variables )
+                                                , Nothing
+                                                )
+
+                                    ( templateName, templateNameInput ) =
+                                        templateNameAndInput
+
+                                    ( variables, variablesInput ) =
+                                        variablesAndInput
+                                in
                                 { model
-                                    | templateName = templateName
-                                    , templateNameInput = templateName
+                                    | error = error
+                                    , templateName = templateName
+                                    , templateNameInput = templateNameInput
                                     , variables = variables
-                                    , variablesInput = variables
+                                    , variablesInput = variablesInput
                                 }
                                     |> withNoCmd
 

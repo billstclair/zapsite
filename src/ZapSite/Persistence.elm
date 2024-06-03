@@ -189,9 +189,18 @@ unprefixTemplateKey key =
         Nothing
 
 
-decodeTemplate : Value -> Result JD.Error String
+decodeTemplate : Value -> Result JD.Error (Maybe String)
 decodeTemplate value =
-    JD.decodeValue JD.string value
+    if value == JE.null then
+        Ok Nothing
+
+    else
+        case JD.decodeValue JD.string value of
+            Ok string ->
+                Ok <| Just string
+
+            Err err ->
+                Err err
 
 
 type alias UrlBindings =
@@ -249,6 +258,15 @@ unprefixUrlBindingsKey key =
         Nothing
 
 
-decodeUrlBindings : Value -> Result JD.Error UrlBindings
+decodeUrlBindings : Value -> Result JD.Error (Maybe UrlBindings)
 decodeUrlBindings value =
-    JD.decodeValue urlBindingsDecoder value
+    if value == JE.null then
+        Ok <| Nothing
+
+    else
+        case JD.decodeValue urlBindingsDecoder value of
+            Ok urlBindings ->
+                Ok <| Just urlBindings
+
+            Err err ->
+                Err err
