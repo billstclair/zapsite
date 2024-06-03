@@ -13,17 +13,19 @@
 module ZapSite.Persistence exposing
     ( Config
     , UrlBindings
+    , decodeTemplate
+    , decodeUrlBindings
     , fsConfig
     , get
     , getTemplate
     , getUrlBindings
     , localConfig
-    , maybeDecodeTemplate
-    , maybeDecodeUrlBindings
     , put
     , putTemplate
     , putUrlBindings
     , s3Config
+    , unprefixTemplateKey
+    , unprefixUrlBindingsKey
     )
 
 {-| Persistence controls how your site data is stored.
@@ -178,13 +180,18 @@ putTemplate config templateName value =
     put config (templatePrefix ++ templateName) v
 
 
-maybeDecodeTemplate : String -> Value -> Maybe (Result JD.Error String)
-maybeDecodeTemplate key value =
+unprefixTemplateKey : String -> Maybe String
+unprefixTemplateKey key =
     if String.left templatePrefixLength key == templatePrefix then
-        Just <| JD.decodeValue JD.string value
+        Just <| String.dropLeft templatePrefixLength key
 
     else
         Nothing
+
+
+decodeTemplate : Value -> Result JD.Error String
+decodeTemplate value =
+    JD.decodeValue JD.string value
 
 
 type alias UrlBindings =
@@ -233,10 +240,15 @@ putUrlBindings config url templateName variables =
     put config (urlBindingsPrefix ++ url) v
 
 
-maybeDecodeUrlBindings : String -> Value -> Maybe (Result JD.Error UrlBindings)
-maybeDecodeUrlBindings key value =
+unprefixUrlBindingsKey : String -> Maybe String
+unprefixUrlBindingsKey key =
     if String.left urlBindingsPrefixLength key == urlBindingsPrefix then
-        Just <| JD.decodeValue urlBindingsDecoder value
+        Just <| String.dropLeft urlBindingsPrefixLength key
 
     else
         Nothing
+
+
+decodeUrlBindings : Value -> Result JD.Error UrlBindings
+decodeUrlBindings value =
+    JD.decodeValue urlBindingsDecoder value

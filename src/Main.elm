@@ -353,7 +353,6 @@ updateInternal msg model =
                 |> withNoCmd
 
         SetUrl ->
-            -- TODO: initiate lookup of URL template name
             { model | url = model.urlInput }
                 |> withCmd (Persistence.getUrlBindings model.storage model.urlInput)
 
@@ -954,51 +953,65 @@ handleListKeysResponse label prefix keys model =
 handleGetStorageResponse : String -> Value -> Model -> ( Model, Cmd Msg )
 handleGetStorageResponse key value model =
     if String.left storagePrefixLength key /= storagePrefix then
-        let
-            e2 =
-                Debug.log "handleGetStorageResponse key" key
-        in
-        model |> withNoCmd
+        { model
+            | error = Just <| "Unknown storage key prefix: " ++ key
+        }
+            |> withNoCmd
 
     else
         let
             subkey =
                 String.dropLeft storagePrefixLength key
         in
-        case Persistence.maybeDecodeTemplate subkey value of
-            Nothing ->
-                case Persistence.maybeDecodeUrlBindings subkey value of
-                    Nothing ->
-                        -- TODO
-                        model |> withNoCmd
-
-                    Just result ->
-                        case result of
-                            Err e ->
-                                let
-                                    e2 =
-                                        Debug.log "handleGetStorageResponse error" e
-                                in
-                                model |> withNoCmd
-
-                            Ok urlBindings ->
-                                -- TODO
-                                model |> withNoCmd
-
-            Just result ->
-                case result of
+        case Persistence.unprefixTemplateKey subkey of
+            Just templateKey ->
+                case Persistence.decodeTemplate value of
                     Err e ->
-                        let
-                            e2 =
-                                Debug.log "handleGetStorageResponse error" e
-                        in
-                        model |> withNoCmd
+                        { model
+                            | error =
+                                Just <|
+                                    "Error decoding storage template key: "
+                                        ++ templateKey
+                                        ++ ", "
+                                        ++ JD.errorToString e
+                        }
+                            |> withNoCmd
 
                     Ok template ->
-                        -- TODO
                         { model
-                            | template = template
+                            | templateInput = template
+                            , template = template
                             , parsed = parseMarkdown template
+                        }
+                            |> withNoCmd
+
+            Nothing ->
+                case Persistence.unprefixUrlBindingsKey subkey of
+                    Just urlBindingsKey ->
+                        case Persistence.decodeUrlBindings value of
+                            Err e ->
+                                { model
+                                    | error =
+                                        Just <|
+                                            "Error decoding storage urlBindings Key: "
+                                                ++ urlBindingsKey
+                                                ++ ", "
+                                                ++ JD.errorToString e
+                                }
+                                    |> withNoCmd
+
+                            Ok { templateName, variables } ->
+                                { model
+                                    | templateName = templateName
+                                    , templateNameInput = templateName
+                                    , variables = variables
+                                    , variablesInput = variables
+                                }
+                                    |> withNoCmd
+
+                    Nothing ->
+                        { model
+                            | error = Just <| "Unknown storage key: " ++ subkey
                         }
                             |> withNoCmd
 
