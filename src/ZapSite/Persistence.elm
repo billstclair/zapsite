@@ -53,13 +53,11 @@ type alias S3ConfigRec =
 
 type alias FSConfigRec =
     { name : String
-    , prefix : String
     }
 
 
 type alias LocalConfigRec msg =
     { name : String
-    , prefix : String
     , getter : String -> Cmd msg
     , putter : String -> Maybe Value -> Cmd msg
     }
@@ -74,7 +72,6 @@ fsConfig : Config msg
 fsConfig =
     FSConfig
         { name = "File System"
-        , prefix = "ZapSite/"
         }
 
 
@@ -82,7 +79,6 @@ localConfig : (String -> Cmd msg) -> (String -> Maybe Value -> Cmd msg) -> Confi
 localConfig getter putter =
     LocalConfig
         { name = "LocalConfig"
-        , prefix = "ZapSite/"
         , getter = getter
         , putter = putter
         }
@@ -112,8 +108,8 @@ fsGet rec key =
 
 
 localGet : LocalConfigRec msg -> String -> Cmd msg
-localGet { prefix, getter } key =
-    getter (prefix ++ key)
+localGet { getter } key =
+    getter key
 
 
 put : Config msg -> String -> Maybe Value -> Cmd msg
@@ -140,8 +136,8 @@ fsPut config key val =
 
 
 localPut : LocalConfigRec msg -> String -> Maybe Value -> Cmd msg
-localPut { prefix, putter } key val =
-    putter (prefix ++ key) val
+localPut { putter } key val =
+    putter key val
 
 
 
@@ -189,18 +185,19 @@ unprefixTemplateKey key =
         Nothing
 
 
-decodeTemplate : Value -> Result JD.Error (Maybe String)
-decodeTemplate value =
-    if value == JE.null then
-        Ok Nothing
+decodeTemplate : Maybe Value -> Result JD.Error (Maybe String)
+decodeTemplate maybeValue =
+    case maybeValue of
+        Nothing ->
+            Ok Nothing
 
-    else
-        case JD.decodeValue JD.string value of
-            Ok string ->
-                Ok <| Just string
+        Just value ->
+            case JD.decodeValue JD.string value of
+                Ok string ->
+                    Ok <| Just string
 
-            Err err ->
-                Err err
+                Err err ->
+                    Err err
 
 
 type alias UrlBindings =
@@ -258,15 +255,16 @@ unprefixUrlBindingsKey key =
         Nothing
 
 
-decodeUrlBindings : Value -> Result JD.Error (Maybe UrlBindings)
-decodeUrlBindings value =
-    if value == JE.null then
-        Ok <| Nothing
+decodeUrlBindings : Maybe Value -> Result JD.Error (Maybe UrlBindings)
+decodeUrlBindings maybeValue =
+    case maybeValue of
+        Nothing ->
+            Ok <| Nothing
 
-    else
-        case JD.decodeValue urlBindingsDecoder value of
-            Ok urlBindings ->
-                Ok <| Just urlBindings
+        Just value ->
+            case JD.decodeValue urlBindingsDecoder value of
+                Ok urlBindings ->
+                    Ok <| Just urlBindings
 
-            Err err ->
-                Err err
+                Err err ->
+                    Err err

@@ -305,7 +305,15 @@ update msg model =
                     True
 
         ( mdl, cmd ) =
-            updateInternal msg model
+            updateInternal msg
+                { model
+                    | error =
+                        if doStore then
+                            Nothing
+
+                        else
+                            model.error
+                }
 
         cmd2 =
             if doStore then
@@ -378,6 +386,7 @@ updateInternal msg model =
                     | templateName = ""
                     , templateInput = ""
                     , variables = Dict.empty
+                    , variablesInput = Dict.empty
                 }
                     |> withNoCmd
 
@@ -572,11 +581,23 @@ labeledInput label v w tagger =
 
 viewMainPage : Model -> List (Html Msg)
 viewMainPage model =
-    [ h1 [] [ text "Zapsite" ]
-    , if model.editing then
+    [ if model.editing then
         div [] <|
             List.concat
-                [ labeledInput "url" model.urlInput 20 SetUrlInput
+                [ [ h1 [] [ text "Zapsite" ]
+                  , div []
+                        [ case model.error of
+                            Nothing ->
+                                text ""
+
+                            Just error ->
+                                span [ style "color" "red" ]
+                                    [ text error
+                                    ]
+                        , br
+                        ]
+                  ]
+                , labeledInput "url" model.urlInput 20 SetUrlInput
                 , if model.url == model.urlInput then
                     []
 
@@ -929,12 +950,7 @@ storageHandler response state model =
             handleListKeysResponse label prefix keys mdl
 
         LocalStorage.GetResponse { label, key, value } ->
-            case value of
-                Nothing ->
-                    mdl |> withNoCmd
-
-                Just v ->
-                    handleGetResponse label key v model
+            handleGetResponse label key value model
 
         _ ->
             mdl |> withCmd cmd
@@ -950,8 +966,8 @@ handleListKeysResponse label prefix keys model =
             model |> withNoCmd
 
 
-handleGetStorageResponse : String -> Value -> Model -> ( Model, Cmd Msg )
-handleGetStorageResponse key value model =
+handleGetStorageResponse : String -> Maybe Value -> Model -> ( Model, Cmd Msg )
+handleGetStorageResponse key maybeValue model =
     if String.left storagePrefixLength key /= storagePrefix then
         { model
             | error = Just <| "Unknown storage key prefix: " ++ key
@@ -961,11 +977,11 @@ handleGetStorageResponse key value model =
     else
         let
             subkey =
-                String.dropLeft storagePrefixLength key
+                Debug.log "handleGetStorageResponse" <| String.dropLeft storagePrefixLength key
         in
         case Persistence.unprefixTemplateKey subkey of
             Just templateKey ->
-                case Persistence.decodeTemplate value of
+                case Debug.log "  " <| Persistence.decodeTemplate maybeValue of
                     Err e ->
                         { model
                             | error =
@@ -980,17 +996,18 @@ handleGetStorageResponse key value model =
                     Ok template ->
                         let
                             ( templ, templInput, error ) =
-                                case template of
-                                    Nothing ->
-                                        ( model.template
-                                        , ""
-                                        , Just <|
-                                            "There is no template named "
-                                                ++ templateKey
-                                        )
+                                Debug.log "  (templ, templInput, error)" <|
+                                    case template of
+                                        Nothing ->
+                                            ( model.template
+                                            , ""
+                                            , Just <|
+                                                "There is no template named "
+                                                    ++ templateKey
+                                            )
 
-                                    Just tmpl ->
-                                        ( tmpl, tmpl, Nothing )
+                                        Just tmpl ->
+                                            ( tmpl, tmpl, Nothing )
                         in
                         { model
                             | error = error
@@ -1003,7 +1020,7 @@ handleGetStorageResponse key value model =
             Nothing ->
                 case Persistence.unprefixUrlBindingsKey subkey of
                     Just urlBindingsKey ->
-                        case Persistence.decodeUrlBindings value of
+                        case Persistence.decodeUrlBindings maybeValue of
                             Err e ->
                                 { model
                                     | error =
@@ -1055,30 +1072,35 @@ handleGetStorageResponse key value model =
                             |> withNoCmd
 
 
-handleGetResponse : Label -> String -> Value -> Model -> ( Model, Cmd Msg )
-handleGetResponse label key value model =
+handleGetResponse : Label -> String -> Maybe Value -> Model -> ( Model, Cmd Msg )
+handleGetResponse label key maybeValue model =
     case label of
         Just lab ->
             if lab == "storage" then
-                handleGetStorageResponse key value model
+                handleGetStorageResponse key maybeValue model
 
             else
                 model |> withNoCmd
 
         Nothing ->
             if Debug.log "handleGetResponse" key == pk.model then
-                case ED.decodeSavedModel value of
-                    Err e ->
-                        let
-                            m =
-                                JE.encode 0 value
-                                    |> Debug.log "  "
-                        in
+                case maybeValue of
+                    Nothing ->
                         model |> withNoCmd
 
-                    Ok savedModel ->
-                        savedModelToModel savedModel model
-                            |> withNoCmd
+                    Just value ->
+                        case ED.decodeSavedModel value of
+                            Err e ->
+                                let
+                                    m =
+                                        JE.encode 0 value
+                                            |> Debug.log "  "
+                                in
+                                model |> withNoCmd
+
+                            Ok savedModel ->
+                                savedModelToModel savedModel model
+                                    |> withNoCmd
 
             else
                 model |> withNoCmd
