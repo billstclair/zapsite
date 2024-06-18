@@ -383,9 +383,7 @@ updateInternal msg model =
 
             else
                 { model
-                    | templateName = ""
-                    , templateInput = ""
-                    , variables = Dict.empty
+                    | templateInput = ""
                     , variablesInput = Dict.empty
                 }
                     |> withNoCmd
@@ -408,15 +406,9 @@ updateInternal msg model =
         SetTemplate ->
             let
                 name =
-                    model.templateName
+                    model.templateNameInput
             in
-            if name /= model.templateNameInput then
-                { model
-                    | error = Just "Save template name to set new template."
-                }
-                    |> withNoCmd
-
-            else if name == "" then
+            if name == "" then
                 { model
                     | error = Just "Can't save template with blank name."
                 }
@@ -424,13 +416,14 @@ updateInternal msg model =
 
             else
                 { model
-                    | template = model.templateInput
+                    | templateName = name
+                    , template = model.templateInput
                     , error = Nothing
                 }
                     |> withCmd
                         (Persistence.putTemplate model.storage
                             name
-                            model.template
+                            model.templateInput
                         )
 
         RevertTemplate ->
@@ -1013,6 +1006,7 @@ handleGetStorageResponse key maybeValue model =
                             | error = error
                             , template = templ
                             , templateInput = templInput
+                            , variablesInput = Dict.empty
                             , parsed = parseMarkdown templ
                         }
                             |> withNoCmd
