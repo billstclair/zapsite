@@ -1031,33 +1031,36 @@ handleGetStorageResponse key maybeValue model =
                                     ( templateNameAndInput, variablesAndInput, error ) =
                                         case bindings of
                                             Nothing ->
-                                                ( ( model.templateName, "" )
-                                                , ( model.variablesInput, Dict.empty )
+                                                ( model.templateNameInput
+                                                , model.variablesInput
                                                 , Just <|
-                                                    "There are no bindings for url: "
+                                                    "New url: "
                                                         ++ urlBindingsKey
                                                 )
 
                                             Just bind ->
-                                                ( ( bind.templateName, bind.templateName )
-                                                , ( bind.variables, bind.variables )
+                                                ( bind.templateName
+                                                , bind.variables
                                                 , Nothing
                                                 )
-
-                                    ( templateName, templateNameInput ) =
-                                        templateNameAndInput
-
-                                    ( variables, variablesInput ) =
-                                        variablesAndInput
                                 in
                                 { model
                                     | error = error
-                                    , templateName = templateName
-                                    , templateNameInput = templateNameInput
-                                    , variables = variables
-                                    , variablesInput = variablesInput
+                                    , templateName = templateNameAndInput
+                                    , templateNameInput = templateNameAndInput
+                                    , variables = variablesAndInput
+                                    , variablesInput = variablesAndInput
                                 }
-                                    |> withNoCmd
+                                    |> withCmd
+                                        (if bindings == Nothing then
+                                            Persistence.putUrlBindings model.storage
+                                                urlBindingsKey
+                                                model.templateNameInput
+                                                model.variablesInput
+
+                                         else
+                                            Cmd.none
+                                        )
 
                     Nothing ->
                         { model
