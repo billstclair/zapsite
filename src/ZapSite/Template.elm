@@ -115,6 +115,9 @@ percentEncode string =
         String.replace "{" "%7B" string
 
 
+{-| TODO: Loop on text replace and parse until no change.
+This allows variable values to have other variables, or more markdown.
+-}
 replaceVariables : Variables -> List Block -> List Block
 replaceVariables variables blocks =
     let
